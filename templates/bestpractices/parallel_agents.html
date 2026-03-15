@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+{% block title %}Parallel Agent Patterns — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🔀 Parallel Agent Patterns</h1>
+    <p class="page-subtitle">How to run 10 concurrent agents without the codebase descending into chaos</p>
+</div>
+
+<div class="kb-nav">
+    <a href="{{ url_for('bestpractices.index') }}" class="btn">← All Best Practices</a>
+</div>
+
+<!-- The Multi-Agent Spectrum -->
+<div class="section">
+    <h2>🌈 The Multi-Agent Spectrum</h2>
+    <div class="content-box">
+        <p>Not all parallel work is the same. Understanding where your task falls on this spectrum determines which pattern to use:</p>
+    </div>
+    <div class="spectrum-visual">
+        <div class="spectrum-item spectrum-1">
+            <h4>1. Independent Tasks</h4>
+            <p>Agents work on completely separate files/features. Zero coordination needed.</p>
+            <div class="example">Example: Agent A writes docs, Agent B adds tests for module X, Agent C refactors module Y</div>
+        </div>
+        <div class="spectrum-item spectrum-2">
+            <h4>2. Loosely Coupled</h4>
+            <p>Agents work on related features that share interfaces. Need agreed-upon contracts.</p>
+            <div class="example">Example: Agent A builds the API endpoint, Agent B builds the frontend that calls it</div>
+        </div>
+        <div class="spectrum-item spectrum-3">
+            <h4>3. Tightly Coupled</h4>
+            <p>Agents work on interrelated code. Requires orchestrator pattern.</p>
+            <div class="example">Example: Refactoring a shared module while others depend on it</div>
+        </div>
+        <div class="spectrum-item spectrum-4">
+            <h4>4. Sequential</h4>
+            <p>Output of one agent is input of next. Pipeline pattern.</p>
+            <div class="example">Example: Agent A designs schema → Agent B implements models → Agent C writes tests</div>
+        </div>
+    </div>
+</div>
+
+<!-- Git Worktree Pattern -->
+<div class="section">
+    <h2>🌿 The Git Worktree Pattern (Recommended)</h2>
+    <div class="content-box">
+        <p><strong>This is the #1 pattern for parallel agents.</strong> Each agent gets its own working directory via git worktrees, eliminating file conflicts entirely.</p>
+    </div>
+    <div class="code-block">
+        <div class="code-header"><span>Setup worktrees for parallel agents</span><button class="btn btn-sm" onclick="copyCode(this)">📋 Copy</button></div>
+        <pre><code># Create worktrees for each agent task
+git worktree add ../project-auth   feature/auth-system
+git worktree add ../project-api    feature/api-endpoints
+git worktree add ../project-tests  feature/test-coverage
+git worktree add ../project-docs   feature/documentation
+
+# Launch agents in their own worktrees
+cd ../project-auth  && claude "Implement JWT auth in src/auth/" &
+cd ../project-api   && claude "Add CRUD endpoints for users" &
+cd ../project-tests && claude "Add tests for src/services/" &
+cd ../project-docs  && claude "Generate API docs from code" &
+
+# When done, merge back
+git merge feature/auth-system
+git merge feature/api-endpoints
+# etc.</code></pre>
+    </div>
+    <div class="callout callout-success">
+        <strong>Why this works:</strong> Each worktree is a real checkout with its own working directory. Agents can't accidentally step on each other's files. Merging happens explicitly under your control.
+    </div>
+</div>
+
+<!-- Fan-Out Pattern -->
+<div class="section">
+    <h2>📡 The Fan-Out / Fan-In Pattern</h2>
+    <div class="content-box">
+        <p>Use Claude's built-in subagent capability to automatically parallelize work:</p>
+    </div>
+    <div class="code-block">
+        <div class="code-header"><span>Fan-out prompt for Claude</span><button class="btn btn-sm" onclick="copyCode(this)">📋 Copy</button></div>
+        <pre><code># This single prompt creates parallel subagents automatically:
+claude "Refactor the following modules to use the new error handling pattern.
+Each module can be done independently:
+1. src/services/auth.ts
+2. src/services/billing.ts  
+3. src/services/notifications.ts
+4. src/services/analytics.ts
+
+Use subagents to do these in parallel. Each subagent should:
+- Read the existing module
+- Apply the ErrorResult pattern from src/shared/errors.ts
+- Update tests
+- Verify with: npm test -- --grep [module-name]"</code></pre>
+    </div>
+    <div class="callout callout-info">
+        <strong>How it works:</strong> When Claude sees parallelizable work, it can spawn subagents using <code>Task()</code> tool calls. Each subagent runs independently, and results fan back to the orchestrator agent.
+    </div>
+</div>
+
+<!-- Headless Sessions -->
+<div class="section">
+    <h2>🖥️ Headless / Background Sessions</h2>
+    <div class="content-box">
+        <p>Run agents in the background without a terminal attached:</p>
+    </div>
+    <div class="code-block">
+        <div class="code-header"><span>Background agent patterns</span><button class="btn btn-sm" onclick="copyCode(this)">📋 Copy</button></div>
+        <pre><code># Run in headless mode with a prompt
+claude -p "Add input validation to all API endpoints" --output-format json
+
+# Print-mode for scripting (no interactive session)
+claude -p "Analyze this codebase and list all TODO comments" --output-format text
+
+# Pipe input for batch processing
+echo "Review src/auth/login.ts for security issues" | claude -p --output-format json
+
+# Run with specific model
+claude --model claude-sonnet-4-20250514 -p "Quick fix: update the README version to 2.0"
+
+# Continue a previous session
+claude --continue        # Resume most recent session
+claude --resume [id]     # Resume specific session</code></pre>
+    </div>
+</div>
+
+<!-- Session Isolation -->
+<div class="section">
+    <h2>🔒 Session Isolation Rules</h2>
+    <div class="rules-grid">
+        <div class="rule-card rule-must">
+            <h4>✅ MUST</h4>
+            <ul>
+                <li>Each agent gets its own branch</li>
+                <li>Each agent works in its own worktree OR on non-overlapping files</li>
+                <li>Define clear file ownership boundaries in CLAUDE.md</li>
+                <li>Use verification commands after every change</li>
+                <li>Commit frequently with descriptive messages</li>
+            </ul>
+        </div>
+        <div class="rule-card rule-never">
+            <h4>❌ NEVER</h4>
+            <ul>
+                <li>Two agents on the same branch</li>
+                <li>Two agents modifying the same file simultaneously</li>
+                <li>Agents resolving merge conflicts autonomously</li>
+                <li>Agents pushing to main/develop directly</li>
+                <li>Running agents without a CLAUDE.md in the project</li>
+            </ul>
+        </div>
+        <div class="rule-card rule-should">
+            <h4>💡 SHOULD</h4>
+            <ul>
+                <li>Name branches with agent identifiers</li>
+                <li>Set up branch protection rules</li>
+                <li>Review agent PRs before merging</li>
+                <li>Start with 2-3 agents, scale up gradually</li>
+                <li>Monitor token usage across all sessions</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Scaling Schedule -->
+<div class="section">
+    <h2>📈 Recommended Scaling Schedule</h2>
+    <div class="content-box">
+        <p>Don't go from 1 to 10 overnight. This ramp prevents cascading failures:</p>
+    </div>
+    <div class="scaling-timeline">
+        <div class="scale-step">
+            <div class="scale-num">1-2</div>
+            <div class="scale-info">
+                <h4>Days 1-4: Single Agent Mastery</h4>
+                <p>Use 1 agent. Perfect your CLAUDE.md. Establish verification habits.</p>
+            </div>
+        </div>
+        <div class="scale-step">
+            <div class="scale-num">3</div>
+            <div class="scale-info">
+                <h4>Day 5: First Parallel Exercise</h4>
+                <p>3 agents on completely independent tasks. Watch for any file overlap.</p>
+            </div>
+        </div>
+        <div class="scale-step">
+            <div class="scale-num">5-7</div>
+            <div class="scale-info">
+                <h4>Days 6-8: Scale with Guardrails</h4>
+                <p>5-7 agents. Introduce worktrees. Identify your failure modes.</p>
+            </div>
+        </div>
+        <div class="scale-step">
+            <div class="scale-num">10</div>
+            <div class="scale-info">
+                <h4>Days 9-14: Full Fleet</h4>
+                <p>10 agents with orchestration layer. Automated health checks. Nightly reports.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyCode(btn) {
+    const code = btn.closest('.code-block').querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = '✅ Copied!';
+        setTimeout(() => btn.textContent = '📋 Copy', 2000);
+    });
+}
+</script>
+{% endblock %}

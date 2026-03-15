@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ agent.name }} — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🤖 {{ agent.name }}</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('agents.remote_view', agent_id=agent.id) }}" class="btn btn-primary">🖥️ Remote View</a>
+        {% if agent.status == 'active' %}
+        <form method="POST" action="{{ url_for('agents.terminate_agent', agent_id=agent.id) }}" class="inline-form">
+            <button type="submit" class="btn btn-danger" onclick="return confirm('Terminate agent?')">⛔ Terminate</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid detail-grid-3">
+    <div class="detail-card">
+        <h3>Identity</h3>
+        <div class="detail-item"><span>Agent ID:</span> <code>{{ agent.agent_id }}</code></div>
+        <div class="detail-item"><span>Owner:</span> <a href="{{ url_for('users.view_user', user_id=agent.owner.id) }}">{{ agent.owner.display_name }}</a></div>
+        <div class="detail-item"><span>Type:</span> <span class="tag">{{ agent.agent_type }}</span></div>
+        <div class="detail-item"><span>Model:</span> <span class="tag">{{ agent.model }}</span></div>
+        <div class="detail-item"><span>Permissions:</span> <span class="tag">{{ agent.permission_mode }}</span></div>
+        <div class="detail-item"><span>Status:</span> <span class="status-badge status-{{ agent.status }}">{{ agent.status }}</span></div>
+    </div>
+    
+    <div class="detail-card">
+        <h3>Performance</h3>
+        <div class="detail-item"><span>Tasks Completed:</span> <span class="stat-green">{{ agent.tasks_completed }}</span></div>
+        <div class="detail-item"><span>Tasks Failed:</span> <span class="stat-red">{{ agent.tasks_failed }}</span></div>
+        <div class="detail-item"><span>Merge Conflicts:</span> <span class="stat-yellow">{{ agent.merge_conflicts }}</span></div>
+        <div class="detail-item"><span>Tokens Used:</span> <span>{{ "{:,.0f}".format(agent.tokens_used) }}</span></div>
+        <div class="detail-item"><span>Success Rate:</span> 
+            <span>{% if (agent.tasks_completed + agent.tasks_failed) > 0 %}{{ ((agent.tasks_completed / (agent.tasks_completed + agent.tasks_failed)) * 100)|round(0) }}%{% else %}N/A{% endif %}</span>
+        </div>
+    </div>
+    
+    <div class="detail-card">
+        <h3>Current Activity</h3>
+        {% if agent.current_task %}
+        <div class="detail-item"><span>Task:</span></div>
+        <p class="task-description">{{ agent.current_task }}</p>
+        {% else %}
+        <p class="text-muted">No active task</p>
+        {% endif %}
+        {% if agent.current_branch %}
+        <div class="detail-item"><span>Branch:</span> <code>{{ agent.current_branch }}</code></div>
+        {% endif %}
+        {% if agent.current_files %}
+        <div class="detail-item"><span>Files:</span></div>
+        <div class="file-list">
+            {% for f in agent.current_files.split(',') %}
+            <code class="file-tag">{{ f.strip() }}</code>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="section">
+    <h2>⚡ Quick Actions</h2>
+    <div class="action-bar">
+        {% if agent.status != 'active' %}
+        <form method="POST" action="{{ url_for('agents.assign_task', agent_id=agent.id) }}" class="inline-form quick-task-form">
+            <input type="text" name="task" placeholder="Quick task description…" class="inline-input" required>
+            <input type="text" name="branch" placeholder="Branch name (optional)" class="inline-input">
+            <button type="submit" class="btn btn-primary">▶ Assign Task</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('agents.complete_task', agent_id=agent.id) }}" class="inline-form">
+            <textarea name="outcome" placeholder="Outcome summary…" rows="2" class="inline-input"></textarea>
+            <input type="number" name="tests_passed" placeholder="Tests passed" class="inline-input-sm" value="0">
+            <input type="number" name="tests_failed" placeholder="Tests failed" class="inline-input-sm" value="0">
+            <button type="submit" class="btn btn-success">✓ Complete Task</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Session History -->
+<div class="section">
+    <h2>📜 Session History</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Task</th>
+                    <th>Branch</th>
+                    <th>Status</th>
+                    <th>Files Changed</th>
+                    <th>Tests</th>
+                    <th>Duration</th>
+                    <th>Tokens</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for session in sessions %}
+                <tr>
+                    <td>{{ session.task_description[:80] }}{% if session.task_description|length > 80 %}…{% endif %}</td>
+                    <td><code>{{ session.branch_name or '—' }}</code></td>
+                    <td><span class="status-badge status-{{ session.status }}">{{ session.status }}</span></td>
+                    <td>{{ session.files_modified or 0 }}</td>
+                    <td>
+                        <span class="stat-green">{{ session.tests_passed or 0 }}✓</span>
+                        <span class="stat-red">{{ session.tests_failed or 0 }}✗</span>
+                    </td>
+                    <td>{{ session.duration_minutes|round(0) if session.duration_minutes else '—' }}m</td>
+                    <td>{{ "{:,.0f}".format(session.tokens_used) if session.tokens_used else '—' }}</td>
+                </tr>
+                {% endfor %}
+                {% if not sessions %}
+                <tr><td colspan="7" class="text-center text-muted">No sessions yet</td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

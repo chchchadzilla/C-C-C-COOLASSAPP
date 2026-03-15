@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+{% block title %}Settings — Provider Configuration{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>⚙️ Provider Configuration</h1>
+    <a href="{{ url_for('settings.create_provider') }}" class="btn btn-primary">+ ADD PROVIDER</a>
+</div>
+
+<p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.85rem; font-family: var(--font-body);">
+    Configure LLM backends for your agent fleet. Supports Claude Code CLI, Anthropic API, OpenRouter, and GitHub Copilot tokens.
+</p>
+
+{% if not providers %}
+<!-- Empty state -->
+<div class="empty-state">
+    <p>🔌 No providers configured yet</p>
+    <p style="color: var(--text-dim); font-size: 0.85rem;">Add at least one provider so agents can make LLM calls.</p>
+    <a href="{{ url_for('settings.create_provider') }}" class="btn btn-primary" style="margin-top: 1rem;">+ ADD FIRST PROVIDER</a>
+</div>
+{% else %}
+
+<div class="providers-grid">
+    {% for provider in providers %}
+    <div class="metric-card {% if provider.is_default %}accent-blue{% elif not provider.is_enabled %}accent-dim{% else %}accent-green{% endif %}" style="position: relative;">
+        <!-- Status indicators -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.4rem;">{{ provider_types[provider.provider_type].icon }}</span>
+                <div>
+                    <h3 style="margin: 0; font-size: 1rem;">{{ provider.name }}</h3>
+                    <span class="tag" style="font-size: 0.65rem;">{{ provider_types[provider.provider_type].label }}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 0.35rem; align-items: center;">
+                {% if provider.is_default %}
+                <span class="status-badge status-active" style="font-size: 0.6rem;">DEFAULT</span>
+                {% endif %}
+                {% if provider.is_enabled %}
+                <span class="status-badge status-active" style="font-size: 0.6rem;">ON</span>
+                {% else %}
+                <span class="status-badge status-terminated" style="font-size: 0.6rem;">OFF</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Key info -->
+        <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+            <div style="display: flex; justify-content: space-between;">
+                <span>Model:</span>
+                <code style="color: var(--text-light);">{{ provider.default_model or '—' }}</code>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>API Key:</span>
+                <code style="color: var(--text-light);">{{ '••••' + provider.api_key[-4:] if provider.api_key else 'none' }}</code>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Max Tokens:</span>
+                <code style="color: var(--text-light);">{{ "{:,}".format(provider.max_tokens) }}</code>
+            </div>
+            <div style="display: flex; justify-content: space-between;">
+                <span>Priority:</span>
+                <code style="color: var(--text-light);">{{ provider.priority }}</code>
+            </div>
+        </div>
+
+        <!-- Test status -->
+        <div style="font-family: var(--font-mono); font-size: 0.7rem; padding: 0.35rem 0.5rem; background: var(--bg-dark); border-radius: var(--radius); margin-bottom: 0.75rem;">
+            {% if provider.last_test_status == 'ok' %}
+            <span style="color: var(--success);">✓ PASS</span> — {{ provider.last_test_message[:60] }}
+            {% elif provider.last_test_status == 'error' %}
+            <span style="color: var(--danger);">✗ FAIL</span> — {{ provider.last_test_message[:60] }}
+            {% else %}
+            <span style="color: var(--text-dim);">○ UNTESTED</span>
+            {% endif %}
+        </div>
+
+        <!-- Actions -->
+        <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-sm btn-test-provider"
+                    data-provider-id="{{ provider.id }}"
+                    data-url="{{ url_for('settings.test_provider', provider_id=provider.id) }}">
+                🧪 TEST
+            </button>
+            <a href="{{ url_for('settings.edit_provider', provider_id=provider.id) }}" class="btn btn-sm">✏️ EDIT</a>
+            <form method="POST" action="{{ url_for('settings.toggle_provider', provider_id=provider.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-sm">{{ '⏸️ DISABLE' if provider.is_enabled else '▶ ENABLE' }}</button>
+            </form>
+            <form method="POST" action="{{ url_for('settings.delete_provider', provider_id=provider.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete provider {{ provider.name }}?')">🗑️</button>
+            </form>
+        </div>
+
+        <!-- AJAX test result (hidden by default) -->
+        <div class="test-result" id="test-result-{{ provider.id }}" style="display:none; margin-top:0.5rem; font-family:var(--font-mono); font-size:0.7rem; padding:0.4rem 0.6rem; border-radius:var(--radius); background:var(--bg-dark);"></div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endif %}
+
+<!-- Provider type reference -->
+<div class="section" style="margin-top: 2rem;">
+    <h2>📖 Supported Providers</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Provider</th>
+                    <th>API Key Required</th>
+                    <th>Default Models</th>
+                    <th>Use Case</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>🖥️</td>
+                    <td><strong>Claude Code (Local CLI)</strong></td>
+                    <td><span class="status-badge status-active">No</span></td>
+                    <td><code>claude-sonnet-4</code>, <code>claude-opus-4</code></td>
+                    <td>Direct CLI execution on dev machines — no network overhead</td>
+                </tr>
+                <tr>
+                    <td>🔮</td>
+                    <td><strong>Anthropic API</strong></td>
+                    <td><span class="status-badge status-error">Yes</span></td>
+                    <td><code>claude-sonnet-4</code>, <code>claude-3.5-sonnet</code>, <code>claude-3.5-haiku</code></td>
+                    <td>Direct API access — best latency, usage-based billing</td>
+                </tr>
+                <tr>
+                    <td>🌐</td>
+                    <td><strong>OpenRouter</strong></td>
+                    <td><span class="status-badge status-error">Yes</span></td>
+                    <td><code>anthropic/claude-sonnet-4</code>, <code>google/gemini-2.5-pro</code>, <code>openai/gpt-4.1</code></td>
+                    <td>Multi-model gateway — fallback across providers, unified billing</td>
+                </tr>
+                <tr>
+                    <td>🐙</td>
+                    <td><strong>GitHub Copilot</strong></td>
+                    <td><span class="status-badge status-error">Yes</span></td>
+                    <td><code>claude-sonnet-4</code>, <code>gpt-4.1</code>, <code>o4-mini</code></td>
+                    <td>Use existing Copilot subscription tokens — great for teams already on GitHub Enterprise</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.providers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+}
+.accent-dim {
+    opacity: 0.55;
+}
+.btn-test-provider.testing {
+    pointer-events: none;
+    opacity: 0.6;
+}
+.btn-test-provider .spinner {
+    display: inline-block;
+    width: 0.8em;
+    height: 0.8em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.3em;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.test-result.pass { color: var(--success); border-left: 3px solid var(--success); }
+.test-result.fail { color: var(--danger); border-left: 3px solid var(--danger); }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.btn-test-provider').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var providerId = btn.dataset.providerId;
+            var url = btn.dataset.url;
+            var resultEl = document.getElementById('test-result-' + providerId);
+
+            // Show spinner
+            btn.classList.add('testing');
+            var origText = btn.textContent;
+            btn.innerHTML = '<span class="spinner"></span>Testing…';
+            resultEl.style.display = 'none';
+            resultEl.className = 'test-result';
+
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            })
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                btn.classList.remove('testing');
+                btn.textContent = origText;
+                resultEl.style.display = 'block';
+                if (data.success) {
+                    resultEl.classList.add('pass');
+                    resultEl.textContent = '✓ PASS — ' + (data.message || 'Connection OK');
+                } else {
+                    resultEl.classList.add('fail');
+                    resultEl.textContent = '✗ FAIL — ' + (data.message || 'Unknown error');
+                }
+                // Update the existing test status display too
+                var card = btn.closest('.metric-card');
+                if (card) {
+                    var statusDiv = card.querySelector('[style*="background: var(--bg-dark)"]');
+                    if (statusDiv) {
+                        if (data.success) {
+                            statusDiv.innerHTML = '<span style="color: var(--success);">✓ PASS</span> — ' + (data.message || '').substring(0, 60);
+                        } else {
+                            statusDiv.innerHTML = '<span style="color: var(--danger);">✗ FAIL</span> — ' + (data.message || '').substring(0, 60);
+                        }
+                    }
+                }
+            })
+            .catch(function(err) {
+                btn.classList.remove('testing');
+                btn.textContent = origText;
+                resultEl.style.display = 'block';
+                resultEl.classList.add('fail');
+                resultEl.textContent = '✗ ERROR — ' + err.message;
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

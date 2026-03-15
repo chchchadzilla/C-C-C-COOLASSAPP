@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Failure Modes & Recovery — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🚨 Failure Modes & Recovery</h1>
+    <p class="page-subtitle">When running 10 agents in parallel, failures aren't if — they're when. Here's every failure mode and how to handle it.</p>
+</div>
+
+<div class="kb-nav">
+    <a href="{{ url_for('bestpractices.index') }}" class="btn">← All Best Practices</a>
+</div>
+
+<!-- Failure Mode 1: Merge Conflicts -->
+<div class="section">
+    <h2>⚔️ 1. Merge Conflicts</h2>
+    <div class="failure-detail">
+        <div class="fd-row">
+            <div class="fd-card fd-what">
+                <h4>What Happens</h4>
+                <p>Two agents modify the same file or overlapping code. When you merge their branches, git can't automatically resolve the differences.</p>
+            </div>
+            <div class="fd-card fd-why">
+                <h4>Why It Happens</h4>
+                <ul>
+                    <li>Poor file ownership boundaries</li>
+                    <li>Shared utility files modified by multiple agents</li>
+                    <li>Agents "helpfully" refactoring imports or formatting outside their scope</li>
+                    <li>Package.json/lock file changes from multiple agents</li>
+                </ul>
+            </div>
+        </div>
+        <div class="fd-card fd-fix">
+            <h4>Prevention & Recovery</h4>
+            <div class="fix-steps">
+                <div class="fix-step">
+                    <span class="fix-icon">🛡️</span>
+                    <div><strong>Prevention:</strong> Define file ownership in CLAUDE.md. Use git worktrees. Add "Do NOT modify files outside your assigned directory" to agent instructions.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">🔧</span>
+                    <div><strong>Recovery:</strong> NEVER let agents auto-resolve conflicts. Pull the conflicting branches, manually resolve, or use a dedicated "conflict resolver" agent with BOTH branches visible.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">📊</span>
+                    <div><strong>Monitoring:</strong> Track conflict frequency. If one file/module has frequent conflicts, it needs to be refactored or assigned to a single agent.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Failure Mode 2: Context Drift -->
+<div class="section">
+    <h2>🌫️ 2. Context Drift</h2>
+    <div class="failure-detail">
+        <div class="fd-row">
+            <div class="fd-card fd-what">
+                <h4>What Happens</h4>
+                <p>An agent's context window fills up with irrelevant information, causing it to "forget" earlier instructions or make increasingly poor decisions.</p>
+            </div>
+            <div class="fd-card fd-why">
+                <h4>Why It Happens</h4>
+                <ul>
+                    <li>Long-running sessions without <code>/compact</code></li>
+                    <li>Agent reads too many files, diluting its focus</li>
+                    <li>Conversation goes on tangents</li>
+                    <li>CLAUDE.md too long, consuming context budget</li>
+                </ul>
+            </div>
+        </div>
+        <div class="fd-card fd-fix">
+            <h4>Prevention & Recovery</h4>
+            <div class="fix-steps">
+                <div class="fix-step">
+                    <span class="fix-icon">🛡️</span>
+                    <div><strong>Prevention:</strong> Keep tasks focused and scoped. Use <code>/compact</code> regularly. Keep CLAUDE.md concise. Start new sessions for new tasks instead of reusing old ones.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">🔧</span>
+                    <div><strong>Recovery:</strong> If output quality drops, start a fresh session. Use <code>claude --resume</code> only when context is still relevant. Better to restart than to fight drift.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">📊</span>
+                    <div><strong>Warning Signs:</strong> Agent repeats itself, ignores CLAUDE.md rules, makes changes it was told not to, or asks questions already answered.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Failure Mode 3: Contradictory Implementations -->
+<div class="section">
+    <h2>🔄 3. Contradictory Implementations</h2>
+    <div class="failure-detail">
+        <div class="fd-row">
+            <div class="fd-card fd-what">
+                <h4>What Happens</h4>
+                <p>Two agents solve the same problem differently. Agent A creates a REST endpoint with Express, Agent B creates the same endpoint with Fastify. Both "work" but they're incompatible.</p>
+            </div>
+            <div class="fd-card fd-why">
+                <h4>Why It Happens</h4>
+                <ul>
+                    <li>CLAUDE.md doesn't specify tech choices explicitly enough</li>
+                    <li>Agents interpret vague requirements differently</li>
+                    <li>No "single source of truth" for architecture decisions</li>
+                    <li>Overlapping task assignments</li>
+                </ul>
+            </div>
+        </div>
+        <div class="fd-card fd-fix">
+            <h4>Prevention & Recovery</h4>
+            <div class="fix-steps">
+                <div class="fix-step">
+                    <span class="fix-icon">🛡️</span>
+                    <div><strong>Prevention:</strong> Architecture decisions go in CLAUDE.md immediately. "We use Express, not Fastify." "State management is Zustand, not Redux." Leave ZERO ambiguity.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">🔧</span>
+                    <div><strong>Recovery:</strong> Pick the better implementation, discard the other. Update CLAUDE.md so it doesn't happen again. This is a documentation failure, not an agent failure.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">📊</span>
+                    <div><strong>Detection:</strong> Code review agent can scan for conflicting patterns: multiple HTTP frameworks, duplicate implementations, incompatible interfaces.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Failure Mode 4: Resource Exhaustion -->
+<div class="section">
+    <h2>💸 4. Resource Exhaustion</h2>
+    <div class="failure-detail">
+        <div class="fd-row">
+            <div class="fd-card fd-what">
+                <h4>What Happens</h4>
+                <p>Running 10 agents burns through API credits rapidly. An infinite loop in one agent can consume your daily budget in minutes.</p>
+            </div>
+            <div class="fd-card fd-why">
+                <h4>Why It Happens</h4>
+                <ul>
+                    <li>Agent stuck in retry loops</li>
+                    <li>Reading very large files repeatedly</li>
+                    <li>Full-auto mode with no guardrails</li>
+                    <li>Not monitoring token usage per agent</li>
+                </ul>
+            </div>
+        </div>
+        <div class="fd-card fd-fix">
+            <h4>Prevention & Recovery</h4>
+            <div class="fix-steps">
+                <div class="fix-step">
+                    <span class="fix-icon">🛡️</span>
+                    <div><strong>Prevention:</strong> Set per-agent token budgets. Monitor usage in this dashboard. Use <code>claude-sonnet</code> for routine tasks (cheaper), <code>claude-opus</code> only for complex work.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">🔧</span>
+                    <div><strong>Recovery:</strong> Kill runaway agents immediately. Check the terminal output for loops. Add explicit "If this fails 3 times, stop and report the error" to CLAUDE.md.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">📊</span>
+                    <div><strong>Budget Rule of Thumb:</strong> 10 active agents ≈ 1-2M tokens/hour with moderate tasks. Set alerts at 80% of your daily budget.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Failure Mode 5: Cascading Failures -->
+<div class="section">
+    <h2>🏚️ 5. Cascading Failures</h2>
+    <div class="failure-detail">
+        <div class="fd-row">
+            <div class="fd-card fd-what">
+                <h4>What Happens</h4>
+                <p>Agent A breaks a shared module. Agents B, C, D all depend on it. They each try to "fix" it differently, creating 4 divergent versions of the same fix.</p>
+            </div>
+            <div class="fd-card fd-why">
+                <h4>Why It Happens</h4>
+                <ul>
+                    <li>Shared code modified without coordination</li>
+                    <li>No integration testing between agent outputs</li>
+                    <li>Full-auto mode allowing agents to "fix" problems they shouldn't</li>
+                </ul>
+            </div>
+        </div>
+        <div class="fd-card fd-fix">
+            <h4>Prevention & Recovery</h4>
+            <div class="fix-steps">
+                <div class="fix-step">
+                    <span class="fix-icon">🛡️</span>
+                    <div><strong>Prevention:</strong> Mark shared modules as "protected" in CLAUDE.md. Require human approval for shared file changes. Run a dedicated integration agent that validates cross-agent compatibility.</div>
+                </div>
+                <div class="fix-step">
+                    <span class="fix-icon">🔧</span>
+                    <div><strong>Recovery:</strong> Pause all agents. Fix the shared module on main. Rebase all agent branches. Resume agents from clean state.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Reference -->
+<div class="section">
+    <h2>📋 Failure Response Quick Reference</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr><th>Failure</th><th>Severity</th><th>First Response</th><th>Time to Fix</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Merge Conflict</td>
+                    <td><span class="severity-badge severity-medium">Medium</span></td>
+                    <td>Manual resolve, update ownership rules</td>
+                    <td>5-15 min</td>
+                </tr>
+                <tr>
+                    <td>Context Drift</td>
+                    <td><span class="severity-badge severity-low">Low</span></td>
+                    <td>New session, /compact, check CLAUDE.md</td>
+                    <td>2-5 min</td>
+                </tr>
+                <tr>
+                    <td>Contradictory Implementation</td>
+                    <td><span class="severity-badge severity-high">High</span></td>
+                    <td>Pick winner, update CLAUDE.md, discard loser</td>
+                    <td>15-30 min</td>
+                </tr>
+                <tr>
+                    <td>Resource Exhaustion</td>
+                    <td><span class="severity-badge severity-critical">Critical</span></td>
+                    <td>Kill runaway agent immediately</td>
+                    <td>1-2 min</td>
+                </tr>
+                <tr>
+                    <td>Cascading Failure</td>
+                    <td><span class="severity-badge severity-critical">Critical</span></td>
+                    <td>Pause ALL agents, fix shared module, rebase</td>
+                    <td>30-60 min</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function copyCode(btn) {
+    const code = btn.closest('.code-block').querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(() => { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); });
+}
+</script>
+{% endblock %}

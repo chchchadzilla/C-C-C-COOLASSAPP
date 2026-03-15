@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Add API Key — Claude Orchestrator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🔑 Add API Key</h1>
+        <p class="page-subtitle">Enter your API key for a provider. It will be encrypted before storage.</p>
+    </div>
+    <a href="{{ url_for('apikeys.my_keys') }}" class="btn btn-secondary">← Back to Keys</a>
+</div>
+
+{% if not provider_choices %}
+<div class="card">
+    <div class="card-body">
+        <p>You already have keys configured for all available providers.</p>
+        <a href="{{ url_for('apikeys.my_keys') }}" class="btn btn-primary">View My Keys</a>
+    </div>
+</div>
+{% else %}
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('apikeys.add_key') }}" id="add-key-form">
+            <!-- Provider type -->
+            <div class="form-group">
+                <label class="form-label">Provider</label>
+                <div class="provider-select-grid">
+                    {% for ptype, meta in provider_choices.items() %}
+                    <label class="provider-select-card {% if preselect == ptype %}selected{% endif %}">
+                        <input type="radio" name="provider_type" value="{{ ptype }}"
+                               {% if preselect == ptype %}checked{% endif %}
+                               onchange="updateProviderUI(this.value)" required>
+                        <span class="provider-select-icon">{{ meta.icon }}</span>
+                        <span class="provider-select-name">{{ meta.label }}</span>
+                        <span class="provider-select-hint">{{ meta.prefix_hint }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Label -->
+            <div class="form-group">
+                <label class="form-label" for="label">Label (optional)</label>
+                <input type="text" id="label" name="label" class="form-input"
+                       placeholder="e.g. My work key, Personal key">
+                <div class="form-help">A friendly name so you can tell keys apart</div>
+            </div>
+
+            <!-- API Key -->
+            <div class="form-group">
+                <label class="form-label" for="api_key">API Key</label>
+                <div class="key-input-wrapper">
+                    <input type="password" id="api_key" name="api_key" class="form-input mono-input"
+                           placeholder="Paste your key here" required autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-secondary toggle-reveal"
+                            onclick="toggleKeyVisibility()">👁</button>
+                </div>
+                <div class="form-help" id="provider-help">
+                    Select a provider above to see where to get your key
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">🔒 Save Key Securely</button>
+                <a href="{{ url_for('apikeys.my_keys') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+<!-- Provider reference -->
+<div class="card mt-md">
+    <div class="card-header"><h3>📖 Where to Get Your Keys</h3></div>
+    <div class="card-body">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Provider</th>
+                    <th>Key Format</th>
+                    <th>Link</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ptype, meta in provider_choices.items() %}
+                <tr>
+                    <td>{{ meta.icon }} {{ meta.label }}</td>
+                    <td><code>{{ meta.prefix_hint }}</code></td>
+                    <td><a href="{{ meta.help_url }}" target="_blank" class="link">Get Key →</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const providerMeta = {{ provider_choices | tojson }};
+
+function updateProviderUI(providerType) {
+    const meta = providerMeta[providerType];
+    if (!meta) return;
+    
+    const helpEl = document.getElementById('provider-help');
+    const keyInput = document.getElementById('api_key');
+    
+    helpEl.innerHTML = `Get your key at <a href="${meta.help_url}" target="_blank" class="link">${meta.help_url}</a>`;
+    keyInput.placeholder = meta.placeholder || 'Paste your key here';
+    
+    // Highlight selected card
+    document.querySelectorAll('.provider-select-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    const radio = document.querySelector(`input[value="${providerType}"]`);
+    if (radio) radio.closest('.provider-select-card').classList.add('selected');
+}
+
+function toggleKeyVisibility() {
+    const input = document.getElementById('api_key');
+    const btn = document.querySelector('.toggle-reveal');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+
+// Init if preselected
+{% if preselect %}
+updateProviderUI('{{ preselect }}');
+{% endif %}
+</script>
+{% endblock %}

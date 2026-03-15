@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Reports — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📊 Nightly Reports</h1>
+    <form method="POST" action="{{ url_for('reports.generate_report') }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">⚡ Generate Now</button>
+    </form>
+</div>
+
+<p class="page-subtitle">Automated nightly reports run at 11 PM UTC. Manual generation available anytime.</p>
+
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Tasks Done</th>
+                <th>Tasks Failed</th>
+                <th>Merge Conflicts</th>
+                <th>Health Score</th>
+                <th>Highlights</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for report in reports %}
+            <tr>
+                <td><strong>{{ report.report_date.strftime('%b %d, %Y') }}</strong></td>
+                <td><span class="tag">{{ report.report_type }}</span></td>
+                <td class="stat-green">{{ report.total_tasks_completed }}</td>
+                <td class="stat-red">{{ report.total_tasks_failed }}</td>
+                <td class="stat-yellow">{{ report.total_merge_conflicts }}</td>
+                <td>
+                    <div class="mini-bar">
+                        <div class="mini-bar-fill {% if report.codebase_health_score >= 80 %}bar-green{% elif report.codebase_health_score >= 50 %}bar-yellow{% else %}bar-red{% endif %}" 
+                             style="width: {{ report.codebase_health_score }}%"></div>
+                    </div>
+                    {{ report.codebase_health_score|round(0) }}
+                </td>
+                <td>{{ report.highlights[:80] if report.highlights else '—' }}{% if report.highlights and report.highlights|length > 80 %}…{% endif %}</td>
+                <td><a href="{{ url_for('reports.view_report', report_id=report.id) }}" class="btn btn-sm">View</a></td>
+            </tr>
+            {% endfor %}
+            {% if not reports %}
+            <tr><td colspan="8" class="text-center text-muted">No reports generated yet. Click "Generate Now" to create your first report.</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="section">
+    <h2><a href="{{ url_for('reports.analytics') }}">📈 View Full Analytics Dashboard →</a></h2>
+</div>
+{% endblock %}

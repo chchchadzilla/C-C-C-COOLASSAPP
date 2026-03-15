@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ user.display_name }} — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>✏️ Edit {{ user.display_name }}</h1>
+</div>
+
+<div class="form-container">
+    <form method="POST" action="{{ url_for('users.edit_user', user_id=user.id) }}">
+        <div class="form-group">
+            <label for="display_name">Display Name</label>
+            <input type="text" id="display_name" name="display_name" value="{{ user.display_name }}">
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="{{ user.email }}">
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="role">Role</label>
+                <select id="role" name="role">
+                    <option value="developer" {% if user.role == 'developer' %}selected{% endif %}>Developer</option>
+                    <option value="orchestrator" {% if user.role == 'orchestrator' %}selected{% endif %}>Orchestrator</option>
+                    <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="max_agents">Max Agents</label>
+                <input type="number" id="max_agents" name="max_agents" value="{{ user.max_agents }}" min="1" max="20">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="target_agent_count">Target Agent Count (2-week ramp)</label>
+            <input type="range" id="target_agent_count" name="target_agent_count" 
+                   min="1" max="{{ user.max_agents }}" value="{{ user.target_agent_count }}"
+                   oninput="document.getElementById('target-display').textContent = this.value">
+            <span id="target-display">{{ user.target_agent_count }}</span> agents
+            <small class="form-help">Day 5: 3 agents → Days 6-8: 5-7 agents → Days 11+: 10 agents</small>
+        </div>
+        <div class="form-group">
+            <label for="password">New Password (leave blank to keep)</label>
+            <input type="password" id="password" name="password" placeholder="Leave blank to keep current">
+        </div>
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" rows="4" placeholder="Adaptation notes, blockers, etc.">{{ user.notes }}</textarea>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('users.view_user', user_id=user.id) }}" class="btn">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Flask instance folder (database lives here)
+instance/
+
+# Environment files
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Coverage
+htmlcov/
+.coverage
+
+# Specstory
+.specstory/
+
+# Temp/build artifacts
+*.egg
+*.whl
+*.tar.gz
+
+# Exports directory
+exports/

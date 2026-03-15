@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Health History — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📈 Health Check History</h1>
+    <a href="{{ url_for('health.overview') }}" class="btn">← Current Health</a>
+</div>
+
+<div class="chart-card chart-wide">
+    <h3>Health Score Over Time</h3>
+    <canvas id="healthChart"></canvas>
+</div>
+
+<div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Branches</th>
+                <th>Conflicts</th>
+                <th>Lint Errors</th>
+                <th>Test Pass Rate</th>
+                <th>Coverage</th>
+                <th>CLAUDE.md</th>
+                <th>Active Agents</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for check in checks %}
+            <tr>
+                <td>{{ check.checked_at.strftime('%b %d %H:%M') }}</td>
+                <td>
+                    <strong class="{% if check.health_score >= 80 %}stat-green{% elif check.health_score >= 50 %}stat-yellow{% else %}stat-red{% endif %}">
+                        {{ check.health_score|round(0) }}
+                    </strong>
+                </td>
+                <td>{{ check.git_branches }}</td>
+                <td class="{% if check.git_conflicts > 0 %}stat-red{% endif %}">{{ check.git_conflicts }}</td>
+                <td class="{% if check.lint_errors > 0 %}stat-red{% endif %}">{{ check.lint_errors }}</td>
+                <td>{{ check.test_pass_rate|round(1) }}%</td>
+                <td>{{ check.test_coverage|round(1) }}%</td>
+                <td>{{ check.claudemd_count }}</td>
+                <td>{{ check.active_agents }}</td>
+            </tr>
+            {% endfor %}
+            {% if not checks %}
+            <tr><td colspan="9" class="text-center text-muted">No health checks recorded yet</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+const checks = {{ checks|tojson }};
+if (checks.length > 0) {
+    new Chart(document.getElementById('healthChart'), {
+        type: 'line',
+        data: {
+            labels: checks.map(c => c.checked_at.substring(5, 16)),
+            datasets: [
+                { label: 'Health Score', data: checks.map(c => c.health_score), borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3 },
+                { label: 'Test Pass Rate', data: checks.map(c => c.test_pass_rate), borderColor: '#3b82f6', borderDash: [5,5], fill: false, tension: 0.3 }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: { y: { min: 0, max: 100, ticks: { color: '#94a3b8' } }, x: { ticks: { color: '#94a3b8' } } },
+            plugins: { legend: { labels: { color: '#94a3b8' } } }
+        }
+    });
+}
+</script>
+{% endblock %}

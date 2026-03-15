@@ -1,0 +1,434 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — C-C-C-COOLASSAPP{% endblock %}
+
+{% block extra_head %}
+<!-- Intro.js for guided tour -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/introjs.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/themes/introjs-dark.css">
+<style>
+    .introjs-tooltip { max-width: 420px; }
+    .introjs-helperLayer { border-radius: var(--radius-lg); }
+    .welcome-banner {
+        background: linear-gradient(135deg, var(--primary-bg), rgba(139,92,246,0.08));
+        border: 1px solid rgba(99,102,241,0.25);
+        border-radius: var(--radius-lg);
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+    }
+    .welcome-banner h2 { font-size: 1.3rem; margin-bottom: 0.25rem; }
+    .welcome-banner p { color: var(--text-muted); font-size: 0.9rem; margin: 0; }
+    .welcome-banner .btn-tour {
+        background: var(--primary); color: #fff; border: none;
+        padding: 0.6rem 1.2rem; border-radius: var(--radius);
+        cursor: pointer; font-size: 0.9rem; white-space: nowrap;
+        transition: var(--transition);
+    }
+    .welcome-banner .btn-tour:hover { background: var(--primary-hover); }
+    .welcome-dismiss { color: var(--text-dim); cursor: pointer; font-size: 0.8rem; border: none; background: none; margin-top: 0.3rem; }
+    .welcome-dismiss:hover { color: var(--text-muted); }
+    .getting-started {
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); padding: 1.5rem 2rem; margin-bottom: 2rem;
+    }
+    .getting-started h3 { font-size: 1.1rem; margin-bottom: 1rem; }
+    .steps-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .step-card {
+        flex: 1; min-width: 180px;
+        background: var(--bg-input); border: 1px solid var(--border);
+        border-radius: var(--radius); padding: 1rem; position: relative;
+    }
+    .step-card.step-done { border-color: var(--green); opacity: 0.7; }
+    .step-number {
+        position: absolute; top: -10px; left: -10px;
+        width: 28px; height: 28px; border-radius: 50%;
+        background: var(--primary); color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.8rem; font-weight: 700;
+    }
+    .step-card.step-done .step-number { background: var(--green); }
+    .step-card h4 { font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .step-card p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
+    .step-card a { font-size: 0.8rem; }
+    .section-header { margin-bottom: 1rem; }
+    .section-header h2 { font-size: 1.2rem; margin-bottom: 0.15rem; }
+    .section-header p { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+    .timeline-compact { display: flex; gap: 2px; flex-wrap: wrap; align-items: center; }
+    .timeline-dot {
+        width: 32px; height: 32px; border-radius: var(--radius);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.7rem; font-weight: 700; cursor: pointer;
+        transition: var(--transition);
+        border: 1px solid var(--border); background: var(--bg-input); color: var(--text-dim);
+    }
+    .timeline-dot:hover { transform: scale(1.15); border-color: var(--primary); }
+    .timeline-dot.status-completed { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+    .timeline-dot.status-in_progress { background: var(--yellow-bg); border-color: var(--yellow); color: var(--yellow); }
+    .timeline-dot.status-blocked { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+    .dashboard-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 900px) { .dashboard-columns { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══ WELCOME BANNER ═══ -->
+<div class="welcome-banner" id="welcome-banner">
+    <div>
+        <h2>� Welcome, {{ current_user.display_name }}!</h2>
+        <p>Orchestrate up to 10 concurrent Claude Code agents per team member. This dashboard is your command center.</p>
+        <button class="welcome-dismiss" onclick="dismissWelcome()">Don't show again</button>
+    </div>
+    <button class="btn-tour" onclick="startTour()">🎓 Take the Tour</button>
+</div>
+
+<!-- ═══ GETTING STARTED CHECKLIST ═══ -->
+<div class="getting-started" id="getting-started">
+    <h3>🚀 Getting Started — Your Setup Checklist</h3>
+    <div class="steps-row">
+        <div class="step-card {% if total_users > 1 %}step-done{% endif %}">
+            <span class="step-number">1</span>
+            <h4>Add Team Members</h4>
+            <p>Register developers to manage agents.</p>
+            <a href="{{ url_for('users.add_user') }}">→ Add user</a>
+        </div>
+        <div class="step-card {% if total_agents > 0 %}step-done{% endif %}">
+            <span class="step-number">2</span>
+            <h4>Deploy Agents</h4>
+            <p>Create Claude Code instances for your team.</p>
+            <a href="{{ url_for('agents.create_agent') }}">→ Deploy agent</a>
+        </div>
+        <div class="step-card {% if current_day %}step-done{% endif %}">
+            <span class="step-number">3</span>
+            <h4>Start 2-Week Plan</h4>
+            <p>Scale from 1 to 10 agents safely.</p>
+            <a href="{{ url_for('implementation.plan_overview') }}">→ View plan</a>
+        </div>
+        <div class="step-card">
+            <span class="step-number">4</span>
+            <h4>Best Practices</h4>
+            <p>CLAUDE.md standards, parallel patterns.</p>
+            <a href="{{ url_for('bestpractices.index') }}">→ Learn</a>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ KEY METRICS ═══ -->
+<div class="section" id="metrics-section">
+    <div class="section-header">
+        <h2>📊 Live Metrics <span style="font-size: 0.7rem; color: var(--green);">🟢 LIVE</span></h2>
+    </div>
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-value" id="active-agents">{{ active_agents }}</div>
+            <div class="metric-label">Active Agents</div>
+            <div class="metric-sub">of {{ total_agents }} total</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" id="tasks-today">{{ tasks_today }}</div>
+            <div class="metric-label">Tasks Today</div>
+            <div class="metric-sub">{{ completed_today }} completed</div>
+        </div>
+        <div class="metric-card accent-warning">
+            <div class="metric-value" id="conflicts-today">{{ conflicts_today }}</div>
+            <div class="metric-label">Merge Conflicts</div>
+            <div class="metric-sub">today</div>
+        </div>
+        <div class="metric-card accent-danger">
+            <div class="metric-value" id="failed-today">{{ failed_today }}</div>
+            <div class="metric-label">Failed Tasks</div>
+            <div class="metric-sub">today</div>
+        </div>
+        <div class="metric-card accent-info">
+            <div class="metric-value">{{ total_users }}</div>
+            <div class="metric-label">Team Members</div>
+            <div class="metric-sub">active</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value">{{ completed_days }}/14</div>
+            <div class="metric-label">Plan Progress</div>
+            <div class="metric-sub">
+                {% if current_day %}Day {{ current_day.day_number }}{% else %}Not started{% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TWO-COLUMN LAYOUT ═══ -->
+<div class="dashboard-columns">
+    <!-- LEFT COLUMN: Team + Issues -->
+    <div>
+        <!-- Team Overview -->
+        <div class="section" id="team-section">
+            <div class="section-header">
+                <h2>👥 Team Overview</h2>
+                <p>Click an agent dot to remote-view its live output</p>
+            </div>
+            
+            {% for user in users %}
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <strong>{{ user.display_name }}</strong>
+                        <span class="role-badge role-{{ user.role }}" style="font-size: 0.7rem;">{{ user.role }}</span>
+                    </div>
+                    <span style="color: var(--text-dim); font-size: 0.8rem;">{{ user.current_agent_count }}/{{ user.target_agent_count }} agents</span>
+                </div>
+                <div style="background: var(--bg-input); border-radius: 4px; height: 6px; margin-bottom: 0.5rem; overflow: hidden;">
+                    <div class="adaptation-fill" style="width: {{ user.adaptation_score }}%; background: var(--primary); height: 100%; border-radius: 4px;"></div>
+                </div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                    {% for agent in user.agents %}
+                    <div class="agent-dot status-{{ agent.status }}" 
+                         title="{{ agent.name }}: {{ agent.status }}{% if agent.current_task %} — {{ agent.current_task[:50] }}{% endif %}"
+                         onclick="window.location.href='{{ url_for('agents.remote_view', agent_id=agent.id) }}'"
+                         style="width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; cursor: pointer; background: var(--bg-input); border: 1px solid var(--border);">
+                        {{ loop.index }}
+                    </div>
+                    {% endfor %}
+                    {% for _ in range(user.target_agent_count - user.agents.count()) %}
+                    <div style="width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; background: var(--bg-input); border: 1px dashed var(--border); color: var(--text-dim);">+</div>
+                    {% endfor %}
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <a href="{{ url_for('users.view_user', user_id=user.id) }}" class="btn btn-sm" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">Details</a>
+                    <a href="{{ url_for('agents.create_agent') }}?user_id={{ user.id }}" class="btn btn-sm btn-primary" style="font-size: 0.75rem; padding: 0.25rem 0.6rem;">+ Agent</a>
+                </div>
+            </div>
+            {% endfor %}
+            
+            {% if not users %}
+            <p style="color: var(--text-dim); font-size: 0.9rem;">No team members yet. <a href="{{ url_for('users.add_user') }}">Add your first team member →</a></p>
+            {% endif %}
+        </div>
+
+        <!-- Unresolved Issues -->
+        {% if recent_failures %}
+        <div class="section" id="issues-section">
+            <div class="section-header">
+                <h2>🔥 Unresolved Issues</h2>
+            </div>
+            {% for failure in recent_failures %}
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-left: 3px solid {% if failure.severity == 'critical' %}var(--red){% elif failure.severity == 'high' %}var(--yellow){% else %}var(--blue){% endif %}; border-radius: var(--radius); padding: 0.75rem 1rem; margin-bottom: 0.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+                    <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 600; color: {% if failure.severity == 'critical' %}var(--red){% elif failure.severity == 'high' %}var(--yellow){% else %}var(--text-muted){% endif %};">{{ failure.severity }}</span>
+                    <span style="font-size: 0.75rem; color: var(--text-dim);">{{ failure.timestamp.strftime('%b %d %H:%M') }}</span>
+                </div>
+                <strong style="font-size: 0.9rem;">{{ failure.title }}</strong>
+                <p style="color: var(--text-muted); font-size: 0.8rem; margin: 0.25rem 0 0;">{{ failure.description[:120] }}{% if failure.description|length > 120 %}…{% endif %}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- RIGHT COLUMN: Plan + Health + Quick Actions -->
+    <div>
+        <!-- 2-Week Plan -->
+        <div class="section" id="plan-section">
+            <div class="section-header">
+                <h2>� 2-Week Plan</h2>
+                <p>Click a day for details — <a href="{{ url_for('implementation.plan_overview') }}">full plan →</a></p>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+                <div style="margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">Week 1: Infrastructure & Mindset</div>
+                <div class="timeline-compact" style="margin-bottom: 1rem;">
+                    {% for day in impl_days if day.week == 1 %}
+                    <div class="timeline-dot status-{{ day.status }}" 
+                         onclick="window.location.href='{{ url_for('implementation.day_detail', day_number=day.day_number) }}'"
+                         title="Day {{ day.day_number }}: {{ day.title }} ({{ day.status|replace('_',' ') }})">
+                        {{ day.day_number }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div style="margin-bottom: 0.5rem; font-size: 0.8rem; color: var(--text-muted);">Week 2: Scaling & Failure Modes</div>
+                <div class="timeline-compact">
+                    {% for day in impl_days if day.week == 2 %}
+                    <div class="timeline-dot status-{{ day.status }}" 
+                         onclick="window.location.href='{{ url_for('implementation.day_detail', day_number=day.day_number) }}'"
+                         title="Day {{ day.day_number }}: {{ day.title }} ({{ day.status|replace('_',' ') }})">
+                        {{ day.day_number }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div style="margin-top: 0.75rem; display: flex; gap: 1rem; font-size: 0.75rem; color: var(--text-dim);">
+                    <span>✅ {{ completed_days }} done</span>
+                    <span>🔄 {% if current_day %}Day {{ current_day.day_number }}{% else %}—{% endif %}</span>
+                    <span>⬜ {{ 14 - completed_days }} remaining</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Snapshot -->
+        <div class="section" id="health-section">
+            <div class="section-header">
+                <h2>🏥 Codebase Health</h2>
+                <p><a href="{{ url_for('health.overview') }}">View details →</a></p>
+            </div>
+            {% if latest_health %}
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; display: flex; align-items: center; gap: 1.5rem;">
+                <div style="text-align: center;">
+                    <svg viewBox="0 0 120 120" width="90" height="90">
+                        <circle cx="60" cy="60" r="54" fill="none" stroke="#333" stroke-width="8"/>
+                        <circle cx="60" cy="60" r="54" fill="none" 
+                                stroke="{% if latest_health.health_score >= 80 %}#10b981{% elif latest_health.health_score >= 60 %}#f59e0b{% else %}#ef4444{% endif %}" 
+                                stroke-width="8" 
+                                stroke-dasharray="{{ latest_health.health_score * 3.39 }} 339"
+                                stroke-linecap="round"
+                                transform="rotate(-90 60 60)"/>
+                        <text x="60" y="60" text-anchor="middle" dy=".3em" fill="white" font-size="24" font-weight="bold">{{ latest_health.health_score|round(0)|int }}</text>
+                    </svg>
+                </div>
+                <div style="flex: 1; font-size: 0.85rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                        <span style="color: var(--text-muted);">Merge Conflicts</span>
+                        <span>{{ latest_health.merge_conflicts_active }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                        <span style="color: var(--text-muted);">Lint Errors</span>
+                        <span>{{ latest_health.lint_errors }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.3rem;">
+                        <span style="color: var(--text-muted);">Tests Failing</span>
+                        <span>{{ latest_health.tests_failing }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">CLAUDE.md Files</span>
+                        <span>{{ latest_health.claude_md_files }}</span>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; text-align: center; color: var(--text-dim); font-size: 0.9rem;">
+                <p>🏥 No health checks run yet.</p>
+                <p style="margin-top: 0.5rem;"><a href="{{ url_for('health.overview') }}">Run your first health check →</a></p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="section" id="quicklinks-section">
+            <div class="section-header">
+                <h2>⚡ Quick Actions</h2>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                    <a href="{{ url_for('agents.create_agent') }}" class="btn btn-sm" style="text-align: center;">🤖 Deploy Agent</a>
+                    <a href="{{ url_for('users.add_user') }}" class="btn btn-sm" style="text-align: center;">👤 Add Member</a>
+                    <a href="{{ url_for('reports.analytics') }}" class="btn btn-sm" style="text-align: center;">📈 Analytics</a>
+                    <a href="{{ url_for('implementation.failure_log') }}" class="btn btn-sm" style="text-align: center;">🔥 Failure Log</a>
+                    <a href="{{ url_for('bestpractices.claude_md') }}" class="btn btn-sm" style="text-align: center;">📝 CLAUDE.md</a>
+                    <a href="{{ url_for('bestpractices.commands') }}" class="btn btn-sm" style="text-align: center;">⌨️ Commands</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/minified/intro.min.js"></script>
+<script>
+// ═══ Guided Tour ═══
+function startTour() {
+    introJs().setOptions({
+        steps: [
+            {
+                element: '#welcome-banner',
+                title: '🎛️ Command Center',
+                intro: 'Welcome to the C-C-C-COOLASSAPP system! This helps you manage <strong>10 concurrent Claude Code instances</strong> per developer on your team.',
+                position: 'bottom'
+            },
+            {
+                element: '#getting-started',
+                title: '🚀 Getting Started',
+                intro: 'Follow these 4 steps to get set up:<br><br>1. <strong>Add team members</strong> (developers)<br>2. <strong>Deploy agents</strong> (Claude instances)<br>3. <strong>Start the 2-week plan</strong><br>4. <strong>Read best practices</strong>',
+                position: 'bottom'
+            },
+            {
+                element: '#metrics-section',
+                title: '📊 Live Metrics',
+                intro: 'Real-time stats refresh every 30 seconds. Track <strong>active agents</strong>, <strong>task completion</strong>, <strong>merge conflicts</strong>, and <strong>failures</strong> at a glance.',
+                position: 'bottom'
+            },
+            {
+                element: '#team-section',
+                title: '👥 Team Overview',
+                intro: 'Each team member gets a card showing:<br>• <strong>Agent dots</strong> — click to remote-view live output<br>• <strong>Adaptation score</strong> — how well they\'re scaling<br>• Quick links to add agents',
+                position: 'right'
+            },
+            {
+                element: '#plan-section',
+                title: '📋 2-Week Implementation Plan',
+                intro: 'Your roadmap from 1 agent to 10:<br><br><strong>Week 1:</strong> Audit, CLAUDE.md standards, first parallel run<br><strong>Week 2:</strong> Failure modes, orchestration, full deployment<br><br>Click any day for tasks & troubleshooting.',
+                position: 'left'
+            },
+            {
+                element: '#health-section',
+                title: '🏥 Health Score',
+                intro: 'Automated checks run <strong>every 6 hours</strong>. Monitors git health, lint errors, test coverage, and CLAUDE.md quality. Keep this above 80!',
+                position: 'left'
+            },
+            {
+                element: '#quicklinks-section',
+                title: '⚡ Quick Actions',
+                intro: 'Common actions in one place. Deploy agents, add members, check analytics, and access the knowledge base.',
+                position: 'left'
+            },
+            {
+                element: '.sidebar',
+                title: '🧭 Navigation',
+                intro: '<strong>Command Center</strong> — Dashboard, Agents, Team<br><strong>Monitoring</strong> — Reports, Analytics, Health<br><strong>Strategy</strong> — 2-Week Plan, Failure Log<br><strong>Knowledge</strong> — Best Practices, CLAUDE.md, Commands',
+                position: 'right'
+            }
+        ],
+        showProgress: true,
+        showBullets: true,
+        exitOnOverlayClick: true,
+        doneLabel: 'Got it! 🚀',
+        nextLabel: 'Next →',
+        prevLabel: '← Back',
+        overlayOpacity: 0.7
+    }).oncomplete(function() {
+        localStorage.setItem('orchestrator_tour_completed', 'true');
+    }).start();
+}
+
+function dismissWelcome() {
+    localStorage.setItem('orchestrator_welcome_dismissed', 'true');
+    document.getElementById('welcome-banner').style.display = 'none';
+}
+
+// Auto-start tour on first visit
+document.addEventListener('DOMContentLoaded', function() {
+    var tourDone = localStorage.getItem('orchestrator_tour_completed');
+    var welcomeDismissed = localStorage.getItem('orchestrator_welcome_dismissed');
+    if (welcomeDismissed) {
+        document.getElementById('welcome-banner').style.display = 'none';
+    }
+    if (!tourDone && !welcomeDismissed) {
+        setTimeout(startTour, 800);
+    }
+});
+
+// ═══ Real-time updates via WebSocket ═══
+var socket = io();
+socket.on('agent_updated', function() { refreshDashboard(); });
+socket.on('agent_created', function() { refreshDashboard(); });
+socket.on('agent_terminated', function() { refreshDashboard(); });
+
+function refreshDashboard() {
+    fetch('/api/dashboard/stats')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('active-agents').textContent = data.active_count;
+        })
+        .catch(console.error);
+}
+setInterval(refreshDashboard, 30000);
+</script>
+{% endblock %}

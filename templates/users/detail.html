@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ user.display_name }} — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>👤 {{ user.display_name }}</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('users.edit_user', user_id=user.id) }}" class="btn">Edit</a>
+        <a href="{{ url_for('agents.create_agent') }}?user_id={{ user.id }}" class="btn btn-primary">+ Add Agent</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div class="detail-card">
+        <h3>Profile</h3>
+        <div class="detail-item"><span>Username:</span> <span>@{{ user.username }}</span></div>
+        <div class="detail-item"><span>Email:</span> <span>{{ user.email }}</span></div>
+        <div class="detail-item"><span>Role:</span> <span class="role-badge role-{{ user.role }}">{{ user.role }}</span></div>
+        <div class="detail-item"><span>Last Seen:</span> <span>{{ user.last_seen.strftime('%Y-%m-%d %H:%M') if user.last_seen else 'Never' }}</span></div>
+    </div>
+    
+    <div class="detail-card">
+        <h3>Agent Stats</h3>
+        <div class="detail-item"><span>Current Agents:</span> <span>{{ user.current_agent_count }}</span></div>
+        <div class="detail-item"><span>Target:</span> <span>{{ user.target_agent_count }}</span></div>
+        <div class="detail-item"><span>Max Allowed:</span> <span>{{ user.max_agents }}</span></div>
+        <div class="detail-item"><span>Adaptation Score:</span> <span>{{ user.adaptation_score|round(0) }}%</span></div>
+    </div>
+</div>
+
+{% if user.notes %}
+<div class="section">
+    <h3>📝 Notes</h3>
+    <div class="notes-content">{{ user.notes }}</div>
+</div>
+{% endif %}
+
+<div class="section">
+    <h2>🤖 Agents ({{ agents|length }})</h2>
+    <div class="agents-grid">
+        {% for agent in agents %}
+        <div class="agent-card status-{{ agent.status }}">
+            <div class="agent-card-header">
+                <h4>{{ agent.name }}</h4>
+                <span class="status-badge status-{{ agent.status }}">{{ agent.status }}</span>
+            </div>
+            <div class="agent-card-body">
+                <div class="agent-meta">
+                    <span>Type: {{ agent.agent_type }}</span>
+                    <span>Model: {{ agent.model }}</span>
+                </div>
+                {% if agent.current_task %}
+                <div class="current-task">
+                    <strong>Current Task:</strong>
+                    <p>{{ agent.current_task }}</p>
+                </div>
+                {% endif %}
+                <div class="agent-stats-mini">
+                    <span>✅ {{ agent.tasks_completed }}</span>
+                    <span>❌ {{ agent.tasks_failed }}</span>
+                    <span>⚡ {{ agent.merge_conflicts }} conflicts</span>
+                </div>
+            </div>
+            <div class="agent-card-actions">
+                <a href="{{ url_for('agents.remote_view', agent_id=agent.id) }}" class="btn btn-sm">🖥️ Remote View</a>
+                <a href="{{ url_for('agents.view_agent', agent_id=agent.id) }}" class="btn btn-sm">Details</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

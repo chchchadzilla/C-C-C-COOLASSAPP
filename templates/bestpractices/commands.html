@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Commands & Configuration — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>⌨️ Commands & Configuration</h1>
+    <p class="page-subtitle">Every CLI flag, slash command, and configuration knob for Claude Code</p>
+</div>
+
+<div class="kb-nav">
+    <a href="{{ url_for('bestpractices.index') }}" class="btn">← All Best Practices</a>
+</div>
+
+<!-- CLI Commands -->
+<div class="section">
+    <h2>🖥️ CLI Launch Commands</h2>
+    <div class="command-grid">
+        <div class="command-card">
+            <code>claude</code>
+            <p>Start interactive session in current directory</p>
+        </div>
+        <div class="command-card">
+            <code>claude "task description"</code>
+            <p>Start session with an initial prompt</p>
+        </div>
+        <div class="command-card">
+            <code>claude -p "prompt"</code>
+            <p>Print mode — non-interactive, outputs result and exits</p>
+        </div>
+        <div class="command-card">
+            <code>claude -p "prompt" --output-format json</code>
+            <p>JSON output for scripting and automation</p>
+        </div>
+        <div class="command-card">
+            <code>claude --continue</code>
+            <p>Resume the most recent session</p>
+        </div>
+        <div class="command-card">
+            <code>claude --resume &lt;session-id&gt;</code>
+            <p>Resume a specific past session</p>
+        </div>
+        <div class="command-card">
+            <code>claude --model claude-sonnet-4-20250514</code>
+            <p>Use a specific model</p>
+        </div>
+        <div class="command-card">
+            <code>claude --dangerously-skip-permissions</code>
+            <p>Full auto-accept mode (use with CI guardrails!)</p>
+        </div>
+        <div class="command-card">
+            <code>cat file.ts | claude -p "review this"</code>
+            <p>Pipe input to Claude for processing</p>
+        </div>
+        <div class="command-card">
+            <code>claude config set model claude-sonnet-4-20250514</code>
+            <p>Set default model globally</p>
+        </div>
+    </div>
+</div>
+
+<!-- Slash Commands -->
+<div class="section">
+    <h2>⚡ Interactive Slash Commands</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr><th>Command</th><th>What It Does</th><th>When to Use</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>/compact</code></td>
+                    <td>Compresses conversation context, freeing up token space</td>
+                    <td>When agent gets slow, confused, or context-heavy. Use every 20-30 exchanges.</td>
+                </tr>
+                <tr>
+                    <td><code>/clear</code></td>
+                    <td>Clears entire conversation history</td>
+                    <td>Starting a completely different task. Nuclear option.</td>
+                </tr>
+                <tr>
+                    <td><code>/cost</code></td>
+                    <td>Shows token usage and estimated cost for this session</td>
+                    <td>Budget monitoring, especially with multiple parallel agents.</td>
+                </tr>
+                <tr>
+                    <td><code>/doctor</code></td>
+                    <td>Checks Claude Code installation and configuration health</td>
+                    <td>Troubleshooting setup issues, verifying environment.</td>
+                </tr>
+                <tr>
+                    <td><code>/help</code></td>
+                    <td>Shows all available commands</td>
+                    <td>Quick reference.</td>
+                </tr>
+                <tr>
+                    <td><code>/init</code></td>
+                    <td>Creates a CLAUDE.md file for the current project</td>
+                    <td>First-time project setup. Claude analyzes codebase and generates context.</td>
+                </tr>
+                <tr>
+                    <td><code>/model</code></td>
+                    <td>Switch model mid-session</td>
+                    <td>Switching from Opus (complex planning) to Sonnet (execution).</td>
+                </tr>
+                <tr>
+                    <td><code>/permissions</code></td>
+                    <td>View and manage tool permissions</td>
+                    <td>Reviewing what the agent can do, adjusting allowlists.</td>
+                </tr>
+                <tr>
+                    <td><code>/status</code></td>
+                    <td>Shows current session status, model, context usage</td>
+                    <td>Checking remaining context budget, current configuration.</td>
+                </tr>
+                <tr>
+                    <td><code>/vim</code></td>
+                    <td>Toggle vim keybindings in the input</td>
+                    <td>If you're a vim user.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Settings File -->
+<div class="section">
+    <h2>⚙️ Settings Configuration</h2>
+    <div class="content-box">
+        <p>Claude Code reads settings from multiple locations (higher priority overrides lower):</p>
+    </div>
+    <div class="settings-hierarchy">
+        <div class="setting-level">
+            <span class="setting-priority">1 (highest)</span>
+            <code>.claude/settings.json</code>
+            <span>Project-level — committed to git, shared with team</span>
+        </div>
+        <div class="setting-level">
+            <span class="setting-priority">2</span>
+            <code>.claude/settings.local.json</code>
+            <span>Project-level, personal — gitignored</span>
+        </div>
+        <div class="setting-level">
+            <span class="setting-priority">3 (lowest)</span>
+            <code>~/.claude/settings.json</code>
+            <span>Global — your personal defaults across all projects</span>
+        </div>
+    </div>
+    
+    <div class="code-block">
+        <div class="code-header"><span>Complete .claude/settings.json example</span><button class="btn btn-sm" onclick="copyCode(this)">📋 Copy</button></div>
+        <pre><code>{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write", 
+      "Bash(npm test:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(npx tsc --noEmit)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push:*)",
+      "Bash(npm publish:*)",
+      "Bash(curl:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "write_file",
+        "command": "npx prettier --write $CLAUDE_FILE_PATH"
+      }
+    ]
+  }
+}</code></pre>
+    </div>
+</div>
+
+<!-- Model Selection -->
+<div class="section">
+    <h2>🧠 Model Selection Guide</h2>
+    <div class="model-grid">
+        <div class="model-card model-opus">
+            <h3>Claude Opus 4</h3>
+            <code>claude-opus-4-20250514</code>
+            <div class="model-traits">
+                <span class="trait trait-good">Best reasoning</span>
+                <span class="trait trait-good">Complex architecture</span>
+                <span class="trait trait-good">Multi-step planning</span>
+                <span class="trait trait-warn">Most expensive</span>
+                <span class="trait trait-warn">Slower</span>
+            </div>
+            <p><strong>Use for:</strong> Orchestrator agents, architecture decisions, complex refactoring, debugging hard issues</p>
+        </div>
+        <div class="model-card model-sonnet">
+            <h3>Claude Sonnet 4</h3>
+            <code>claude-sonnet-4-20250514</code>
+            <div class="model-traits">
+                <span class="trait trait-good">Best value</span>
+                <span class="trait trait-good">Fast execution</span>
+                <span class="trait trait-good">Great for routine tasks</span>
+                <span class="trait trait-good">Default model</span>
+            </div>
+            <p><strong>Use for:</strong> 80% of agent work — implementation, tests, docs, bug fixes, code review</p>
+        </div>
+    </div>
+    <div class="callout callout-info">
+        <strong>Cost optimization tip:</strong> Use Opus for the orchestrator agent (1 instance), Sonnet for all worker agents (9 instances). The orchestrator plans; workers execute. This typically saves 40-60% vs all-Opus.
+    </div>
+</div>
+
+<!-- Environment Variables -->
+<div class="section">
+    <h2>🔑 Environment Variables</h2>
+    <div class="table-container">
+        <table class="data-table">
+            <thead><tr><th>Variable</th><th>Purpose</th></tr></thead>
+            <tbody>
+                <tr><td><code>ANTHROPIC_API_KEY</code></td><td>Your API key for authentication</td></tr>
+                <tr><td><code>CLAUDE_CODE_USE_BEDROCK=1</code></td><td>Use AWS Bedrock instead of direct API</td></tr>
+                <tr><td><code>CLAUDE_CODE_USE_VERTEX=1</code></td><td>Use Google Vertex AI instead of direct API</td></tr>
+                <tr><td><code>CLAUDE_MODEL</code></td><td>Override default model</td></tr>
+                <tr><td><code>CLAUDE_CONFIG_DIR</code></td><td>Custom config directory (default: ~/.claude)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Keyboard Shortcuts -->
+<div class="section">
+    <h2>⌨️ Keyboard Shortcuts (Interactive Mode)</h2>
+    <div class="shortcut-grid">
+        <div class="shortcut-item"><kbd>Ctrl+C</kbd><span>Cancel current generation</span></div>
+        <div class="shortcut-item"><kbd>Ctrl+D</kbd><span>Exit session</span></div>
+        <div class="shortcut-item"><kbd>Up/Down</kbd><span>Navigate message history</span></div>
+        <div class="shortcut-item"><kbd>Esc</kbd><span>Cancel current input / interrupt</span></div>
+        <div class="shortcut-item"><kbd>Tab</kbd><span>Accept autocomplete suggestion</span></div>
+        <div class="shortcut-item"><kbd>Shift+Tab</kbd><span>Decline autocomplete</span></div>
+    </div>
+</div>
+
+<script>
+function copyCode(btn) {
+    const code = btn.closest('.code-block').querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(() => { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); });
+}
+</script>
+{% endblock %}

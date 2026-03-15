@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Edit API Key — Claude Orchestrator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>✏️ Edit API Key</h1>
+        <p class="page-subtitle">{{ provider_meta.get('icon', '🔑') }} {{ provider_meta.get('label', key.provider_type) }}</p>
+    </div>
+    <a href="{{ url_for('apikeys.my_keys') }}" class="btn btn-secondary">← Back to Keys</a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="POST" action="{{ url_for('apikeys.edit_key', key_id=key.id) }}">
+            <!-- Current key hint -->
+            <div class="form-group">
+                <label class="form-label">Current Key</label>
+                <div class="key-display">
+                    <code class="key-hint">{{ key.key_hint or '(not set)' }}</code>
+                    {% if key.is_valid %}
+                    <span class="badge badge-success">✓ Valid</span>
+                    {% else %}
+                    <span class="badge badge-error">✗ Invalid</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Label -->
+            <div class="form-group">
+                <label class="form-label" for="label">Label</label>
+                <input type="text" id="label" name="label" class="form-input"
+                       value="{{ key.label }}" placeholder="e.g. My work key">
+            </div>
+
+            <!-- New key (optional) -->
+            <div class="form-group">
+                <label class="form-label" for="api_key">New API Key <span class="form-hint">(leave blank to keep current)</span></label>
+                <div class="key-input-wrapper">
+                    <input type="password" id="api_key" name="api_key" class="form-input mono-input"
+                           placeholder="{{ provider_meta.get('placeholder', 'Paste new key to replace') }}"
+                           autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-secondary toggle-reveal"
+                            onclick="toggleKeyVisibility()">👁</button>
+                </div>
+                <div class="form-help">
+                    Get a new key at <a href="{{ provider_meta.get('help_url', '#') }}" target="_blank" class="link">{{ provider_meta.get('help_url', '') }}</a>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="form-group">
+                <label class="form-label">Usage Statistics</label>
+                <div class="key-stats">
+                    <div class="key-stat">
+                        <span class="key-stat-label">Total Requests</span>
+                        <span class="key-stat-value">{{ key.total_requests }}</span>
+                    </div>
+                    <div class="key-stat">
+                        <span class="key-stat-label">Total Tokens</span>
+                        <span class="key-stat-value">{{ "{:,}".format(key.total_tokens) }}</span>
+                    </div>
+                    <div class="key-stat">
+                        <span class="key-stat-label">Last Used</span>
+                        <span class="key-stat-value">{{ key.last_used_at.strftime('%Y-%m-%d %H:%M') if key.last_used_at else 'Never' }}</span>
+                    </div>
+                    <div class="key-stat">
+                        <span class="key-stat-label">Added</span>
+                        <span class="key-stat-value">{{ key.created_at.strftime('%Y-%m-%d') if key.created_at else '—' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            {% if key.last_error %}
+            <div class="form-group">
+                <label class="form-label">Last Error</label>
+                <div class="key-error">{{ key.last_error }}</div>
+            </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">💾 Update Key</button>
+                <a href="{{ url_for('apikeys.my_keys') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleKeyVisibility() {
+    const input = document.getElementById('api_key');
+    const btn = document.querySelector('.toggle-reveal');
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+    } else {
+        input.type = 'password';
+        btn.textContent = '👁';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% block title %}Remote View — {{ agent.name }} — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="remote-view-container">
+    <div class="remote-header">
+        <div class="remote-identity">
+            <span class="agent-dot dot-{{ agent.status }} dot-lg pulse"></span>
+            <h1>{{ agent.name }}</h1>
+            <span class="status-badge status-{{ agent.status }}">{{ agent.status }}</span>
+        </div>
+        <div class="remote-meta">
+            <span>Owner: {{ agent.owner.display_name }}</span>
+            <span>|</span>
+            <span>{{ agent.agent_type }}</span>
+            <span>|</span>
+            <span>{{ agent.model }}</span>
+            <span>|</span>
+            <span>{{ agent.permission_mode }}</span>
+        </div>
+        <div class="remote-actions">
+            <a href="{{ url_for('agents.view_agent', agent_id=agent.id) }}" class="btn btn-sm">← Details</a>
+            <button class="btn btn-sm" id="btn-refresh" onclick="refreshView()">🔄 Refresh</button>
+        </div>
+    </div>
+
+    <div class="remote-grid">
+        <!-- Live Terminal Pane -->
+        <div class="remote-panel remote-terminal">
+            <div class="panel-header">
+                <h3>📟 Live Terminal</h3>
+                <span class="live-indicator" id="live-dot">● LIVE</span>
+            </div>
+            <div class="terminal-output" id="terminal-output">
+                <div class="term-line term-system">Connected to agent {{ agent.agent_id }}</div>
+                <div class="term-line term-system">Model: {{ agent.model }} | Permission: {{ agent.permission_mode }}</div>
+                <div class="term-line term-system">---</div>
+                {% if agent.current_task %}
+                <div class="term-line term-prompt">&gt; Task: {{ agent.current_task }}</div>
+                {% endif %}
+                {% if agent.current_branch %}
+                <div class="term-line term-info">Branch: {{ agent.current_branch }}</div>
+                {% endif %}
+                <div class="term-line term-waiting" id="term-waiting">Waiting for agent activity…</div>
+            </div>
+        </div>
+
+        <!-- Status Dashboard -->
+        <div class="remote-panel remote-status">
+            <div class="panel-header"><h3>📊 Status</h3></div>
+            <div class="status-grid">
+                <div class="status-item">
+                    <span class="status-label">Current Task</span>
+                    <span class="status-value" id="rv-task">{{ agent.current_task or 'None' }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Branch</span>
+                    <code class="status-value" id="rv-branch">{{ agent.current_branch or '—' }}</code>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Files Touched</span>
+                    <span class="status-value" id="rv-files">{{ agent.current_files or 'None' }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Tasks Done</span>
+                    <span class="status-value stat-green" id="rv-done">{{ agent.tasks_completed }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Failures</span>
+                    <span class="status-value stat-red" id="rv-failed">{{ agent.tasks_failed }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Conflicts</span>
+                    <span class="status-value stat-yellow" id="rv-conflicts">{{ agent.merge_conflicts }}</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Tokens</span>
+                    <span class="status-value" id="rv-tokens">{{ "{:,.0f}".format(agent.tokens_used) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Activity Pane -->
+        <div class="remote-panel remote-files">
+            <div class="panel-header"><h3>📁 File Activity</h3></div>
+            <div class="file-activity" id="file-activity">
+                {% if agent.current_files %}
+                {% for f in agent.current_files.split(',') %}
+                <div class="file-entry">
+                    <span class="file-icon">📄</span>
+                    <code>{{ f.strip() }}</code>
+                    <span class="file-status">modified</span>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted">No file activity yet</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Session Log -->
+        <div class="remote-panel remote-log">
+            <div class="panel-header"><h3>📜 Recent Sessions</h3></div>
+            <div class="session-log">
+                {% for session in sessions[:5] %}
+                <div class="session-entry status-{{ session.status }}">
+                    <div class="session-task">{{ session.task_description[:100] }}</div>
+                    <div class="session-meta">
+                        <span class="status-badge status-{{ session.status }}">{{ session.status }}</span>
+                        <span>{{ session.files_modified or 0 }} files</span>
+                        <span>{{ session.tests_passed or 0 }}✓ {{ session.tests_failed or 0 }}✗</span>
+                    </div>
+                    {% if session.outcome_summary %}
+                    <div class="session-outcome">{{ session.outcome_summary[:200] }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% if not sessions %}
+                <p class="text-muted">No completed sessions</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Remote Command Bar -->
+    <div class="remote-command-bar">
+        {% if agent.status != 'active' %}
+        <form method="POST" action="{{ url_for('agents.assign_task', agent_id=agent.id) }}" class="command-form">
+            <input type="text" name="task" placeholder="Send task to agent…" class="command-input" required>
+            <input type="text" name="branch" placeholder="Branch" class="command-input-sm">
+            <button type="submit" class="btn btn-primary">▶ Send</button>
+        </form>
+        {% else %}
+        <div class="command-active">
+            <span>Agent is working on: <strong>{{ agent.current_task[:60] }}…</strong></span>
+            <form method="POST" action="{{ url_for('agents.complete_task', agent_id=agent.id) }}" class="inline-form">
+                <input type="hidden" name="outcome" value="Completed via remote view">
+                <button type="submit" class="btn btn-success btn-sm">✓ Mark Complete</button>
+            </form>
+            <form method="POST" action="{{ url_for('agents.terminate_agent', agent_id=agent.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Terminate?')">⛔ Kill</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+const agentId = {{ agent.id }};
+const socket = io();
+
+socket.on('agent_update_' + agentId, function(data) {
+    const output = document.getElementById('terminal-output');
+    const line = document.createElement('div');
+    line.className = 'term-line term-update';
+    line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + JSON.stringify(data);
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+    
+    if (data.status) document.querySelector('.status-badge').textContent = data.status;
+    if (data.current_task) document.getElementById('rv-task').textContent = data.current_task;
+    if (data.current_branch) document.getElementById('rv-branch').textContent = data.current_branch;
+});
+
+socket.on('connect', function() {
+    document.getElementById('live-dot').classList.add('connected');
+});
+
+function refreshView() {
+    fetch('/api/agents/' + agentId)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('rv-task').textContent = data.current_task || 'None';
+            document.getElementById('rv-branch').textContent = data.current_branch || '—';
+            document.getElementById('rv-files').textContent = data.current_files || 'None';
+            document.getElementById('rv-done').textContent = data.tasks_completed;
+            document.getElementById('rv-failed').textContent = data.tasks_failed;
+            document.getElementById('rv-conflicts').textContent = data.merge_conflicts;
+            document.getElementById('rv-tokens').textContent = Number(data.tokens_used).toLocaleString();
+        });
+}
+
+setInterval(refreshView, 10000);
+</script>
+{% endblock %}

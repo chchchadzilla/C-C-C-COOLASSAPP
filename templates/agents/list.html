@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Agents — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🤖 Agent Fleet</h1>
+    <a href="{{ url_for('agents.create_agent') }}" class="btn btn-primary">+ Deploy Agent</a>
+</div>
+
+<div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All ({{ agents|length }})</button>
+    <button class="filter-btn" data-filter="active">Active</button>
+    <button class="filter-btn" data-filter="idle">Idle</button>
+    <button class="filter-btn" data-filter="error">Error</button>
+    <button class="filter-btn" data-filter="paused">Paused</button>
+</div>
+
+<div class="agents-grid" id="agents-grid">
+    {% for agent in agents %}
+    <div class="agent-card status-border-{{ agent.status }}" data-status="{{ agent.status }}">
+        <div class="agent-card-header">
+            <div class="agent-identity">
+                <span class="agent-dot dot-{{ agent.status }}"></span>
+                <h4>{{ agent.name }}</h4>
+            </div>
+            <span class="status-badge status-{{ agent.status }}">{{ agent.status }}</span>
+        </div>
+        
+        <div class="agent-card-body">
+            <div class="agent-owner">
+                <small>Owner: <a href="{{ url_for('users.view_user', user_id=agent.owner.id) }}">{{ agent.owner.display_name }}</a></small>
+            </div>
+            <div class="agent-meta-row">
+                <span class="tag">{{ agent.agent_type }}</span>
+                <span class="tag">{{ agent.model }}</span>
+                <span class="tag">{{ agent.permission_mode }}</span>
+            </div>
+            
+            {% if agent.current_task %}
+            <div class="current-task">
+                <strong>📋 Task:</strong>
+                <p>{{ agent.current_task[:120] }}{% if agent.current_task|length > 120 %}…{% endif %}</p>
+            </div>
+            {% endif %}
+            
+            {% if agent.current_branch %}
+            <div class="current-branch">
+                <code>🌿 {{ agent.current_branch }}</code>
+            </div>
+            {% endif %}
+            
+            <div class="agent-stats-row">
+                <div class="stat-mini"><span class="stat-num">{{ agent.tasks_completed }}</span><span class="stat-label">Done</span></div>
+                <div class="stat-mini"><span class="stat-num">{{ agent.tasks_failed }}</span><span class="stat-label">Failed</span></div>
+                <div class="stat-mini"><span class="stat-num">{{ agent.merge_conflicts }}</span><span class="stat-label">Conflicts</span></div>
+                <div class="stat-mini"><span class="stat-num">{{ (agent.tokens_used / 1000)|round(0)|int }}k</span><span class="stat-label">Tokens</span></div>
+            </div>
+        </div>
+        
+        <div class="agent-card-actions">
+            <a href="{{ url_for('agents.remote_view', agent_id=agent.id) }}" class="btn btn-sm btn-primary">🖥️ Remote</a>
+            <a href="{{ url_for('agents.view_agent', agent_id=agent.id) }}" class="btn btn-sm">Details</a>
+            {% if agent.status == 'active' %}
+            <form method="POST" action="{{ url_for('agents.terminate_agent', agent_id=agent.id) }}" class="inline-form">
+                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Terminate agent?')">⛔</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('.agent-card').forEach(card => {
+            card.style.display = (filter === 'all' || card.dataset.status === filter) ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

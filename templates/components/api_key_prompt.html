@@ -1,0 +1,190 @@
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     API KEY PROMPT MODAL
+     Include this in any page that might trigger an API call.
+     Usage: call showApiKeyPrompt('anthropic') from JS when a key is needed.
+     ═══════════════════════════════════════════════════════════════════════════ -->
+
+<div id="api-key-prompt-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>🔑 API Key Required</h3>
+            <button onclick="closeKeyPrompt()" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+            <p id="key-prompt-message">
+                An API key is required for this provider. Enter it below and it will be
+                securely encrypted and saved to your account.
+            </p>
+
+            <div class="form-group">
+                <label class="form-label" id="key-prompt-label">API Key</label>
+                <div class="key-input-wrapper">
+                    <input type="password" id="key-prompt-input" class="form-input mono-input"
+                           placeholder="Paste your API key" autocomplete="off">
+                    <button type="button" class="btn btn-sm btn-secondary"
+                            onclick="togglePromptKeyVis()">👁</button>
+                </div>
+                <div class="form-help" id="key-prompt-help"></div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="key-prompt-label-input">Label (optional)</label>
+                <input type="text" id="key-prompt-label-input" class="form-input"
+                       placeholder="e.g. My work key">
+            </div>
+
+            <div id="key-prompt-error" class="key-error" style="display:none;"></div>
+            <div id="key-prompt-success" class="flash flash-success" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="savePromptKey()" class="btn btn-primary" id="key-prompt-save">
+                🔒 Save Key
+            </button>
+            <button onclick="closeKeyPrompt()" class="btn btn-secondary">Cancel</button>
+            <a href="/api-keys/" class="btn btn-secondary" id="key-prompt-manage">Manage Keys</a>
+        </div>
+    </div>
+</div>
+
+<script>
+// ─── API Key Prompt Modal ────────────────────────────────────────────────────
+let _keyPromptProviderType = '';
+let _keyPromptCallback = null;
+
+const _providerInfo = {
+    anthropic: {
+        label: 'Anthropic API Key',
+        icon: '🔮',
+        placeholder: 'sk-ant-api03-...',
+        help: 'Get your key at <a href="https://console.anthropic.com/settings/keys" target="_blank" class="link">console.anthropic.com</a>',
+    },
+    openrouter: {
+        label: 'OpenRouter API Key',
+        icon: '🌐',
+        placeholder: 'sk-or-v1-...',
+        help: 'Get your key at <a href="https://openrouter.ai/keys" target="_blank" class="link">openrouter.ai/keys</a>',
+    },
+    github_copilot: {
+        label: 'GitHub Copilot Token',
+        icon: '🐙',
+        placeholder: 'ghp_...',
+        help: 'Get your token at <a href="https://github.com/settings/tokens" target="_blank" class="link">github.com/settings/tokens</a>',
+    },
+};
+
+/**
+ * Show the API key prompt modal for a given provider type.
+ * @param {string} providerType - 'anthropic', 'openrouter', or 'github_copilot'
+ * @param {function} onSaved - callback after key is saved successfully
+ */
+function showApiKeyPrompt(providerType, onSaved) {
+    _keyPromptProviderType = providerType;
+    _keyPromptCallback = onSaved || null;
+
+    const info = _providerInfo[providerType] || {};
+    document.getElementById('key-prompt-label').textContent = info.label || 'API Key';
+    document.getElementById('key-prompt-input').placeholder = info.placeholder || 'Paste your API key';
+    document.getElementById('key-prompt-help').innerHTML = info.help || '';
+    document.getElementById('key-prompt-message').textContent =
+        `An ${info.label || 'API key'} is required. Enter it below — it will be encrypted and saved securely.`;
+
+    // Reset state
+    document.getElementById('key-prompt-input').value = '';
+    document.getElementById('key-prompt-label-input').value = '';
+    document.getElementById('key-prompt-error').style.display = 'none';
+    document.getElementById('key-prompt-success').style.display = 'none';
+    document.getElementById('key-prompt-save').disabled = false;
+
+    document.getElementById('api-key-prompt-modal').style.display = 'flex';
+    document.getElementById('key-prompt-input').focus();
+}
+
+function closeKeyPrompt() {
+    document.getElementById('api-key-prompt-modal').style.display = 'none';
+    _keyPromptProviderType = '';
+    _keyPromptCallback = null;
+}
+
+function togglePromptKeyVis() {
+    const input = document.getElementById('key-prompt-input');
+    input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+function savePromptKey() {
+    const key = document.getElementById('key-prompt-input').value.trim();
+    const label = document.getElementById('key-prompt-label-input').value.trim();
+    const errorEl = document.getElementById('key-prompt-error');
+    const successEl = document.getElementById('key-prompt-success');
+    const saveBtn = document.getElementById('key-prompt-save');
+
+    if (!key) {
+        errorEl.textContent = 'API key cannot be empty';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving...';
+    errorEl.style.display = 'none';
+
+    fetch('/api-keys/prompt-save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            provider_type: _keyPromptProviderType,
+            api_key: key,
+            label: label
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            successEl.textContent = `Key saved securely (${data.key_hint})`;
+            successEl.style.display = 'block';
+            saveBtn.textContent = '✓ Saved';
+
+            setTimeout(() => {
+                closeKeyPrompt();
+                if (_keyPromptCallback) _keyPromptCallback();
+            }, 1200);
+        } else {
+            errorEl.textContent = data.error || 'Failed to save key';
+            errorEl.style.display = 'block';
+            saveBtn.disabled = false;
+            saveBtn.textContent = '🔒 Save Key';
+        }
+    })
+    .catch(err => {
+        errorEl.textContent = 'Network error: ' + err;
+        errorEl.style.display = 'block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = '🔒 Save Key';
+    });
+}
+
+/**
+ * Utility: Check if the current user has a key for a provider.
+ * If not, show the prompt modal.
+ * @param {string} providerType
+ * @param {function} onReady - called when key exists or was just saved
+ */
+function requireApiKey(providerType, onReady) {
+    fetch(`/api-keys/check/${providerType}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.has_key) {
+                onReady();
+            } else {
+                showApiKeyPrompt(providerType, onReady);
+            }
+        })
+        .catch(() => {
+            showApiKeyPrompt(providerType, onReady);
+        });
+}
+
+// Close modal on overlay click
+document.getElementById('api-key-prompt-modal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeKeyPrompt();
+});
+</script>

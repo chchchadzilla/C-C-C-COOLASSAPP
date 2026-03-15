@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Admin: All API Keys — Claude Orchestrator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🛡️ API Key Administration</h1>
+        <p class="page-subtitle">View and manage API keys for all team members.
+           Reveal actions are audit-logged.</p>
+    </div>
+    <a href="{{ url_for('apikeys.my_keys') }}" class="btn btn-secondary">← My Keys</a>
+</div>
+
+<!-- ═══ SUMMARY CARDS ═══ -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total Keys</div>
+        <div class="metric-value">{{ keys | length }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Active</div>
+        <div class="metric-value">{{ keys | selectattr('is_active') | list | length }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Invalid</div>
+        <div class="metric-value">{{ keys | rejectattr('is_valid') | list | length }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Users w/ Keys</div>
+        <div class="metric-value">{{ keys | map(attribute='user_id') | unique | list | length }}</div>
+    </div>
+</div>
+
+<!-- ═══ KEYS TABLE ═══ -->
+<div class="card">
+    <div class="card-header">
+        <h3>All API Keys</h3>
+    </div>
+    <div class="card-body">
+        {% if keys %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Provider</th>
+                    <th>Key Hint</th>
+                    <th>Status</th>
+                    <th>Requests</th>
+                    <th>Tokens</th>
+                    <th>Last Used</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key in keys %}
+                {% set meta = provider_choices.get(key.provider_type, {}) %}
+                <tr class="{% if not key.is_active %}row-disabled{% endif %}">
+                    <td>
+                        <strong>{{ key.user.display_name }}</strong>
+                        <span class="role-badge role-{{ key.user.role }}">{{ key.user.role }}</span>
+                    </td>
+                    <td>{{ meta.get('icon', '🔑') }} {{ meta.get('label', key.provider_type) }}</td>
+                    <td><code class="key-hint-sm">{{ key.key_hint or '—' }}</code></td>
+                    <td>
+                        {% if not key.is_active %}
+                            <span class="badge badge-muted">Revoked</span>
+                        {% elif key.is_valid %}
+                            <span class="badge badge-success">Valid</span>
+                        {% else %}
+                            <span class="badge badge-error">Invalid</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ key.total_requests }}</td>
+                    <td>{{ "{:,}".format(key.total_tokens) }}</td>
+                    <td>{{ key.last_used_at.strftime('%b %d %H:%M') if key.last_used_at else '—' }}</td>
+                    <td class="actions-cell">
+                        {% if key.is_active %}
+                        <form method="POST" action="{{ url_for('apikeys.admin_revoke_key', key_id=key.id) }}" class="inline-form">
+                            <button type="submit" class="btn btn-sm btn-warning" title="Revoke key">⏸ Revoke</button>
+                        </form>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('apikeys.admin_activate_key', key_id=key.id) }}" class="inline-form">
+                            <button type="submit" class="btn btn-sm btn-success" title="Re-activate key">▶ Activate</button>
+                        </form>
+                        {% endif %}
+
+                        <button type="button" class="btn btn-sm btn-secondary"
+                                onclick="revealKey({{ key.id }})" title="Reveal full key (audit-logged)">👁 Reveal</button>
+
+                        <form method="POST" action="{{ url_for('apikeys.admin_delete_key', key_id=key.id) }}" class="inline-form"
+                              onsubmit="return confirm('Permanently delete this key for {{ key.user.display_name }}?')">
+                            <button type="submit" class="btn btn-sm btn-danger">🗑</button>
+                        </form>
+                    </td>
+                </tr>
+                {% if key.last_error %}
+                <tr class="error-detail-row">
+                    <td colspan="8">
+                        <span class="text-error">Error: {{ key.last_error[:200] }}</span>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state-inline">
+            <p>No API keys have been configured by any user yet.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- ═══ COVERAGE TABLE ═══ -->
+<div class="card mt-md">
+    <div class="card-header">
+        <h3>📊 Coverage Matrix</h3>
+    </div>
+    <div class="card-body">
+        <p class="text-muted mb-sm">Which users have keys for which providers?</p>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    {% for ptype, meta in provider_choices.items() %}
+                    <th class="text-center">{{ meta.icon }}<br>{{ meta.label | truncate(12) }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.display_name }}</strong></td>
+                    {% for ptype in provider_choices %}
+                    <td class="text-center">
+                        {% set user_key = keys | selectattr('user_id', 'equalto', user.id) | selectattr('provider_type', 'equalto', ptype) | list | first %}
+                        {% if user_key %}
+                            {% if user_key.is_active and user_key.is_valid %}
+                                <span class="coverage-dot dot-ok" title="Active & valid">●</span>
+                            {% elif user_key.is_active %}
+                                <span class="coverage-dot dot-warn" title="Active but invalid">●</span>
+                            {% else %}
+                                <span class="coverage-dot dot-off" title="Revoked">○</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="coverage-dot dot-none" title="No key">—</span>
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══ REVEAL MODAL ═══ -->
+<div id="reveal-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <h3>⚠️ Reveal API Key</h3>
+            <button onclick="closeRevealModal()" class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="text-warning">This action is <strong>audit-logged</strong>.
+               The full decrypted key will be shown below.</p>
+            <div class="revealed-key-box" id="revealed-key">
+                <code>Loading...</code>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button onclick="copyRevealedKey()" class="btn btn-secondary">📋 Copy</button>
+            <button onclick="closeRevealModal()" class="btn btn-primary">Close</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function revealKey(keyId) {
+    if (!confirm('This will reveal the full API key. This action is AUDIT-LOGGED. Continue?')) return;
+
+    const modal = document.getElementById('reveal-modal');
+    const box = document.getElementById('revealed-key');
+    box.innerHTML = '<code>Decrypting...</code>';
+    modal.style.display = 'flex';
+
+    fetch(`/api-keys/admin/${keyId}/reveal`, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            box.innerHTML = `<code class="mono-input">${data.key}</code>`;
+        })
+        .catch(err => {
+            box.innerHTML = `<code class="text-error">Error: ${err}</code>`;
+        });
+}
+
+function closeRevealModal() {
+    document.getElementById('reveal-modal').style.display = 'none';
+    document.getElementById('revealed-key').innerHTML = '';
+}
+
+function copyRevealedKey() {
+    const code = document.querySelector('#revealed-key code');
+    if (code) {
+        navigator.clipboard.writeText(code.textContent);
+        alert('Copied to clipboard');
+    }
+}
+
+// Close modal on overlay click
+document.getElementById('reveal-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeRevealModal();
+});
+</script>
+{% endblock %}

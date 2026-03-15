@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}My API Keys — Claude Orchestrator{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>🔑 My API Keys</h1>
+        <p class="page-subtitle">Manage your personal API keys for each provider.
+           Keys are encrypted at rest and never shown in full.</p>
+    </div>
+    {% if missing_types %}
+    <a href="{{ url_for('apikeys.add_key') }}" class="btn btn-primary">+ Add Key</a>
+    {% endif %}
+</div>
+
+<!-- ═══ KEY CARDS ═══ -->
+{% if keys %}
+<div class="key-grid">
+    {% for key in keys %}
+    {% set meta = provider_choices.get(key.provider_type, {}) %}
+    <div class="card key-card {% if not key.is_active %}key-disabled{% endif %}">
+        <div class="key-card-header">
+            <span class="key-provider-icon">{{ meta.get('icon', '🔑') }}</span>
+            <div>
+                <h3 class="key-provider-name">{{ meta.get('label', key.provider_type) }}</h3>
+                <span class="key-label">{{ key.label }}</span>
+            </div>
+            <div class="key-status-badges">
+                {% if key.is_active %}
+                    {% if key.is_valid %}
+                    <span class="badge badge-success">✓ Active</span>
+                    {% else %}
+                    <span class="badge badge-error">✗ Invalid</span>
+                    {% endif %}
+                {% else %}
+                    <span class="badge badge-muted">Disabled</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="key-card-body">
+            <div class="key-display">
+                <code class="key-hint">{{ key.key_hint or '(not set)' }}</code>
+            </div>
+
+            <div class="key-stats">
+                <div class="key-stat">
+                    <span class="key-stat-label">Requests</span>
+                    <span class="key-stat-value">{{ key.total_requests }}</span>
+                </div>
+                <div class="key-stat">
+                    <span class="key-stat-label">Tokens</span>
+                    <span class="key-stat-value">{{ "{:,}".format(key.total_tokens) }}</span>
+                </div>
+                <div class="key-stat">
+                    <span class="key-stat-label">Last Used</span>
+                    <span class="key-stat-value">{{ key.last_used_at.strftime('%b %d') if key.last_used_at else 'Never' }}</span>
+                </div>
+            </div>
+
+            {% if key.last_error %}
+            <div class="key-error">
+                <strong>Last Error:</strong> {{ key.last_error[:120] }}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="key-card-actions">
+            <form method="POST" action="{{ url_for('apikeys.test_key', key_id=key.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-sm btn-secondary" title="Test this key">🧪 Test</button>
+            </form>
+            <a href="{{ url_for('apikeys.edit_key', key_id=key.id) }}" class="btn btn-sm btn-secondary">✏️ Edit</a>
+            <form method="POST" action="{{ url_for('apikeys.toggle_key', key_id=key.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-sm btn-secondary">
+                    {% if key.is_active %}⏸ Disable{% else %}▶ Enable{% endif %}
+                </button>
+            </form>
+            <form method="POST" action="{{ url_for('apikeys.delete_key', key_id=key.id) }}"
+                  style="display:inline" onsubmit="return confirm('Delete this API key? This cannot be undone.')">
+                <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">🔑</div>
+    <h2>No API Keys Configured</h2>
+    <p>Add your API keys to start using AI providers with your agents.</p>
+    <a href="{{ url_for('apikeys.add_key') }}" class="btn btn-primary">+ Add Your First Key</a>
+</div>
+{% endif %}
+
+<!-- ═══ MISSING PROVIDERS ═══ -->
+{% if missing_types and keys %}
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3>🔌 Available Providers</h3>
+    </div>
+    <div class="card-body">
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">You haven't added keys for these providers yet:</p>
+        <div class="missing-providers">
+            {% for ptype, meta in missing_types.items() %}
+            <a href="{{ url_for('apikeys.add_key', provider=ptype) }}" class="missing-provider-card">
+                <span class="missing-provider-icon">{{ meta.icon }}</span>
+                <span class="missing-provider-name">{{ meta.label }}</span>
+                <span class="missing-provider-action">+ Add Key</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ═══ SECURITY INFO ═══ -->
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">
+        <h3>🔒 Security</h3>
+    </div>
+    <div class="card-body">
+        <ul style="color: var(--text-muted); line-height: 1.8;">
+            <li>Keys are <strong>encrypted at rest</strong> using AES-128-CBC (Fernet) before storage</li>
+            <li>The full key is <strong>never displayed</strong> — only a masked hint is shown</li>
+            <li>Keys are decrypted <strong>only</strong> when making an outbound API call</li>
+            <li>Admins can revoke keys but <strong>audit-logged</strong> if they reveal one</li>
+            <li>Each key is scoped to <strong>your user account</strong> — other users can't see it</li>
+        </ul>
+    </div>
+</div>
+
+{% if current_user.role in ('admin', 'orchestrator') %}
+<div style="margin-top: 1rem; text-align: right;">
+    <a href="{{ url_for('apikeys.admin_keys') }}" class="btn btn-secondary">🛡️ Admin: View All Keys</a>
+</div>
+{% endif %}
+
+{% endblock %}

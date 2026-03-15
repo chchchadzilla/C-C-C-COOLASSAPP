@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Day {{ day.day_number }}: {{ day.title }} — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>
+        {% if day.status == 'completed' %}✅{% elif day.status == 'in_progress' %}🔄{% else %}⬜{% endif %}
+        Day {{ day.day_number }}: {{ day.title }}
+    </h1>
+    <div class="header-actions">
+        <a href="{{ url_for('implementation.overview') }}" class="btn">← Plan Overview</a>
+        {% if day.day_number > 1 %}
+        <a href="{{ url_for('implementation.day_detail', day_number=day.day_number - 1) }}" class="btn btn-sm">◀ Day {{ day.day_number - 1 }}</a>
+        {% endif %}
+        {% if day.day_number < 14 %}
+        <a href="{{ url_for('implementation.day_detail', day_number=day.day_number + 1) }}" class="btn btn-sm">Day {{ day.day_number + 1 }} ▶</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="day-meta-bar">
+    <span class="tag">Week {{ day.week }}</span>
+    <span class="phase-badge">{{ day.phase }}</span>
+    <span class="status-badge status-{{ day.status }}">{{ day.status|replace('_', ' ')|title }}</span>
+    
+    {% if day.status == 'not_started' %}
+    <form method="POST" action="{{ url_for('implementation.update_day', day_number=day.day_number) }}" class="inline-form">
+        <input type="hidden" name="status" value="in_progress">
+        <button type="submit" class="btn btn-sm btn-primary">▶ Start This Day</button>
+    </form>
+    {% elif day.status == 'in_progress' %}
+    <form method="POST" action="{{ url_for('implementation.update_day', day_number=day.day_number) }}" class="inline-form">
+        <input type="hidden" name="status" value="completed">
+        <button type="submit" class="btn btn-sm btn-success">✓ Mark Complete</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>📝 Description</h2>
+    <div class="content-box">{{ day.description }}</div>
+</div>
+
+<!-- Tasks Checklist -->
+<div class="section">
+    <h2>✅ Tasks</h2>
+    <div class="task-checklist">
+        {% set tasks = day.tasks|from_json if day.tasks else [] %}
+        {% for task in tasks %}
+        <div class="task-item">
+            <span class="task-bullet">{{ loop.index }}</span>
+            <span class="task-text">{{ task }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Troubleshooting -->
+{% set ts = day.troubleshooting|from_json if day.troubleshooting else {} %}
+{% if ts %}
+<div class="section">
+    <h2>🔧 Troubleshooting Guide</h2>
+    <div class="troubleshoot-grid">
+        {% if ts.get('problem') %}
+        <div class="ts-card ts-problem">
+            <h4>❌ Common Problem</h4>
+            <p>{{ ts.problem }}</p>
+        </div>
+        {% endif %}
+        {% if ts.get('solution') %}
+        <div class="ts-card ts-solution">
+            <h4>✅ Solution</h4>
+            <p>{{ ts.solution }}</p>
+        </div>
+        {% endif %}
+        {% if ts.get('warning_signs') %}
+        <div class="ts-card ts-warning">
+            <h4>⚠️ Warning Signs</h4>
+            <ul>
+                {% for sign in ts.warning_signs %}
+                <li>{{ sign }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% if ts.get('escalation') %}
+        <div class="ts-card ts-escalation">
+            <h4>🚨 Escalation</h4>
+            <p>{{ ts.escalation }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Success Criteria -->
+<div class="section">
+    <h2>🎯 Success Criteria</h2>
+    <div class="criteria-list">
+        {% set criteria = day.success_criteria|from_json if day.success_criteria else [] %}
+        {% for criterion in criteria %}
+        <div class="criteria-item">
+            <span class="criteria-icon">🎯</span>
+            <span>{{ criterion }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+{% if day.notes %}
+<div class="section">
+    <h2>📝 Notes</h2>
+    <div class="content-box">{{ day.notes }}</div>
+</div>
+{% endif %}
+{% endblock %}

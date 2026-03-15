@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Orchestration Patterns — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🎛️ Orchestration Patterns</h1>
+    <p class="page-subtitle">Skills, subagents, plugins, hooks — the mental model for structuring agent work at scale</p>
+</div>
+
+<div class="kb-nav">
+    <a href="{{ url_for('bestpractices.index') }}" class="btn">← All Best Practices</a>
+</div>
+
+<!-- Mental Model -->
+<div class="section">
+    <h2>🧠 The Mental Model: Skills → Subagents → Plugins</h2>
+    <div class="content-box">
+        <p>Think of extending Claude Code capabilities in three tiers of complexity:</p>
+    </div>
+    <div class="tier-grid">
+        <div class="tier-card tier-1">
+            <h3>Skills (Easiest)</h3>
+            <p><strong>What:</strong> Markdown files in <code>~/.claude/skills/</code> or <code>.claude/skills/</code> that teach Claude new patterns.</p>
+            <p><strong>When:</strong> You want Claude to follow a specific coding pattern, use a particular library in a specific way, or follow a complex workflow.</p>
+            <div class="code-block code-sm">
+                <pre><code># .claude/skills/api-endpoint.md
+When creating API endpoints:
+1. Use Express Router
+2. Add Zod validation for request body
+3. Use asyncHandler wrapper
+4. Return standardized response format
+5. Add OpenAPI comment annotations
+
+Example:
+```typescript
+router.post('/users', asyncHandler(async (req, res) => {
+  const body = CreateUserSchema.parse(req.body);
+  const user = await userService.create(body);
+  res.json({ success: true, data: user });
+}));
+```</code></pre>
+            </div>
+        </div>
+        
+        <div class="tier-card tier-2">
+            <h3>Subagents (Medium)</h3>
+            <p><strong>What:</strong> Claude spawns child agents to handle subtasks in parallel. The main agent orchestrates.</p>
+            <p><strong>When:</strong> Tasks can be decomposed into independent pieces. The orchestrator plans, subagents execute.</p>
+            <div class="code-block code-sm">
+                <pre><code># Prompt that triggers subagent usage:
+"Refactor all service files to use the new error 
+handling pattern. There are 8 services that can be 
+done independently — use subagents to parallelize."
+
+# Claude will automatically:
+# 1. List the 8 services
+# 2. Spawn a subagent for each
+# 3. Each subagent refactors one service
+# 4. Main agent collects results</code></pre>
+            </div>
+        </div>
+        
+        <div class="tier-card tier-3">
+            <h3>Hooks & MCP (Advanced)</h3>
+            <p><strong>What:</strong> Custom scripts that run at lifecycle events (pre-tool, post-tool, notification). MCP servers extend Claude with custom tools.</p>
+            <p><strong>When:</strong> You need automated guardrails, custom integrations, or domain-specific capabilities.</p>
+            <div class="code-block code-sm">
+                <pre><code># .claude/settings.json — Hook example
+{
+  "hooks": {
+    "PostToolUse": [{
+      "matcher": "write_file",
+      "command": "npm run lint --fix $CLAUDE_FILE_PATH"
+    }]
+  }
+}
+
+# Runs lint auto-fix after every file write</code></pre>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Orchestration Patterns -->
+<div class="section">
+    <h2>🏗️ Orchestration Patterns for 10 Agents</h2>
+    
+    <div class="pattern-card">
+        <h3>Pattern 1: The Feature Factory</h3>
+        <div class="pattern-desc">
+            <p><strong>Structure:</strong> 1 orchestrator agent + 8-9 worker agents</p>
+            <p>The orchestrator breaks down a large feature into independent tasks and distributes them. Workers execute in parallel on separate branches.</p>
+        </div>
+        <div class="pattern-flow">
+            <div class="flow-step">📋 Orchestrator reads requirements</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">📦 Breaks into 8-9 tasks</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">🔀 Assigns to workers (git worktrees)</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">✅ Workers execute & verify</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">🔄 Orchestrator reviews & merges</div>
+        </div>
+        <div class="pattern-best">Best for: New feature development, module rewrites, test coverage sprints</div>
+    </div>
+    
+    <div class="pattern-card">
+        <h3>Pattern 2: The Pipeline</h3>
+        <div class="pattern-desc">
+            <p><strong>Structure:</strong> Sequential agents with handoffs</p>
+            <p>Each agent handles one phase. Output of one is input to next. Like an assembly line.</p>
+        </div>
+        <div class="pattern-flow">
+            <div class="flow-step">🔍 Agent 1: Research & Design</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">🏗️ Agent 2: Implementation</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">🧪 Agent 3: Testing</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">👁️ Agent 4: Code Review</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">📝 Agent 5: Documentation</div>
+        </div>
+        <div class="pattern-best">Best for: Quality-critical features, compliance-heavy work, unfamiliar codebases</div>
+    </div>
+    
+    <div class="pattern-card">
+        <h3>Pattern 3: The Swarm</h3>
+        <div class="pattern-desc">
+            <p><strong>Structure:</strong> All agents work independently on different concerns</p>
+            <p>No orchestrator. Each agent has a clear domain. They never interact directly.</p>
+        </div>
+        <div class="pattern-flow">
+            <div class="flow-step">🔧 Agent 1-3: Features</div>
+            <div class="flow-step">🧪 Agent 4-5: Tests</div>
+            <div class="flow-step">📝 Agent 6: Docs</div>
+            <div class="flow-step">👁️ Agent 7: Reviews</div>
+            <div class="flow-step">🔒 Agent 8: Security</div>
+            <div class="flow-step">⚡ Agent 9-10: Bug fixes</div>
+        </div>
+        <div class="pattern-best">Best for: Large codebases with clear module boundaries, maintenance work, sprint backlogs</div>
+    </div>
+</div>
+
+<!-- Permission Strategies -->
+<div class="section">
+    <h2>🔐 Permission Strategies</h2>
+    <div class="content-box">
+        <p>How you set permissions directly impacts both safety and velocity:</p>
+    </div>
+    <div class="permissions-grid">
+        <div class="perm-card perm-safe">
+            <h4>🛡️ Default (Safest)</h4>
+            <p>Agent asks before every file write and shell command.</p>
+            <p><strong>Use for:</strong> New agents, critical codepaths, unfamiliar developers</p>
+            <code>claude</code>
+        </div>
+        <div class="perm-card perm-moderate">
+            <h4>⚡ Allowlisted Tools</h4>
+            <p>Auto-approve specific tools, ask for everything else.</p>
+            <p><strong>Use for:</strong> Trusted agents doing routine work</p>
+            <div class="code-block code-sm">
+                <pre><code>// .claude/settings.json
+{
+  "permissions": {
+    "allow": [
+      "Read", "Write",
+      "Bash(npm test:*)",
+      "Bash(npm run lint)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}</code></pre>
+            </div>
+        </div>
+        <div class="perm-card perm-danger">
+            <h4>🚀 Full Auto (Fastest, Riskiest)</h4>
+            <p>Agent does everything without asking. Only use with CI guardrails.</p>
+            <p><strong>Use for:</strong> Isolated tasks with test coverage and branch protection</p>
+            <code>claude --dangerously-skip-permissions</code>
+            <div class="callout callout-warning">Requires: comprehensive test suite, branch protection, code review before merge</div>
+        </div>
+    </div>
+</div>
+
+<!-- Hooks Deep Dive -->
+<div class="section">
+    <h2>🪝 Hooks: Automated Guardrails</h2>
+    <div class="content-box">
+        <p>Hooks run custom commands at key lifecycle points. Essential for maintaining quality at scale:</p>
+    </div>
+    <div class="code-block">
+        <div class="code-header"><span>.claude/settings.json — Production hooks</span><button class="btn btn-sm" onclick="copyCode(this)">📋 Copy</button></div>
+        <pre><code>{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "write_file",
+        "command": "npx prettier --write $CLAUDE_FILE_PATH && npx eslint --fix $CLAUDE_FILE_PATH"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "bash",
+        "command": "echo 'Command: $CLAUDE_TOOL_INPUT' >> /tmp/claude-audit.log"
+      }
+    ],
+    "Notification": [
+      {
+        "command": "terminal-notifier -title 'Claude' -message '$CLAUDE_NOTIFICATION'"
+      }
+    ]
+  }
+}</code></pre>
+    </div>
+    <div class="callout callout-info">
+        <strong>Hook types:</strong> <code>PreToolUse</code> (before any tool), <code>PostToolUse</code> (after any tool), <code>Notification</code> (when agent needs attention). Use <code>matcher</code> to filter which tools trigger the hook.
+    </div>
+</div>
+
+<script>
+function copyCode(btn) {
+    const code = btn.closest('.code-block').querySelector('code').textContent;
+    navigator.clipboard.writeText(code).then(() => { btn.textContent = '✅ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 2000); });
+}
+</script>
+{% endblock %}

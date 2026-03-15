@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Health Check — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🏥 Codebase Health</h1>
+    <form method="POST" action="{{ url_for('health.run_check') }}" class="inline-form">
+        <button type="submit" class="btn btn-primary">🔄 Run Health Check Now</button>
+    </form>
+</div>
+<p class="page-subtitle">Automated checks run every 6 hours. Monitors git health, code quality, and CLAUDE.md context quality.</p>
+
+{% if latest %}
+<!-- Health Score Ring -->
+<div class="health-hero">
+    <div class="health-ring-lg">
+        <svg viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" stroke-width="10"/>
+            <circle cx="60" cy="60" r="50" fill="none"
+                stroke="{% if latest.health_score >= 80 %}#22c55e{% elif latest.health_score >= 50 %}#f59e0b{% else %}#ef4444{% endif %}"
+                stroke-width="10" stroke-dasharray="{{ latest.health_score * 3.14 }} 314"
+                stroke-linecap="round" transform="rotate(-90 60 60)"/>
+            <text x="60" y="60" text-anchor="middle" dominant-baseline="central" 
+                  fill="{% if latest.health_score >= 80 %}#22c55e{% elif latest.health_score >= 50 %}#f59e0b{% else %}#ef4444{% endif %}"
+                  font-size="28" font-weight="bold">{{ latest.health_score|round(0) }}</text>
+        </svg>
+    </div>
+    <div class="health-summary">
+        <span>Last check: {{ latest.checked_at.strftime('%B %d, %Y at %H:%M UTC') }}</span>
+    </div>
+</div>
+
+<!-- Health Details -->
+<div class="health-grid">
+    <!-- Git Health -->
+    <div class="health-card">
+        <h3>🌿 Git Health</h3>
+        <div class="detail-item"><span>Active Branches:</span> <span>{{ latest.git_branches }}</span></div>
+        <div class="detail-item"><span>Unmerged Conflicts:</span> 
+            <span class="{% if latest.git_conflicts > 0 %}stat-red{% else %}stat-green{% endif %}">{{ latest.git_conflicts }}</span>
+        </div>
+        <div class="detail-item"><span>Stale Branches (>7d):</span> <span>{{ latest.git_stale_branches }}</span></div>
+        {% if latest.git_conflicts > 0 %}
+        <div class="callout callout-warning">Unresolved merge conflicts detected. Address before running more agents.</div>
+        {% endif %}
+    </div>
+    
+    <!-- Code Quality -->
+    <div class="health-card">
+        <h3>📊 Code Quality</h3>
+        <div class="detail-item"><span>Lint Errors:</span> 
+            <span class="{% if latest.lint_errors > 0 %}stat-red{% else %}stat-green{% endif %}">{{ latest.lint_errors }}</span>
+        </div>
+        <div class="detail-item"><span>Lint Warnings:</span> <span class="stat-yellow">{{ latest.lint_warnings }}</span></div>
+        <div class="detail-item"><span>Test Pass Rate:</span> 
+            <span class="{% if latest.test_pass_rate >= 90 %}stat-green{% elif latest.test_pass_rate >= 70 %}stat-yellow{% else %}stat-red{% endif %}">
+                {{ latest.test_pass_rate|round(1) }}%
+            </span>
+        </div>
+        <div class="detail-item"><span>Test Coverage:</span> <span>{{ latest.test_coverage|round(1) }}%</span></div>
+    </div>
+    
+    <!-- Context Health -->
+    <div class="health-card">
+        <h3>📄 Context Health</h3>
+        <div class="detail-item"><span>CLAUDE.md Files:</span> <span>{{ latest.claudemd_count }}</span></div>
+        <div class="detail-item"><span>Total Context Lines:</span> <span>{{ latest.claudemd_total_lines }}</span></div>
+        <div class="detail-item"><span>Skills Files:</span> <span>{{ latest.skills_count }}</span></div>
+        <div class="detail-item"><span>Active Agents:</span> <span>{{ latest.active_agents }}</span></div>
+        <div class="detail-item"><span>Hooks Configured:</span> <span>{{ latest.hooks_count }}</span></div>
+        <div class="detail-item"><span>Permission Allowlists:</span> <span>{{ latest.permissions_configured }}</span></div>
+        {% if latest.claudemd_count == 0 %}
+        <div class="callout callout-warning">No CLAUDE.md found! This is critical for multi-agent coordination. 
+            <a href="{{ url_for('bestpractices.claude_md') }}">Create one now →</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% else %}
+<div class="empty-state">
+    <p>🏥 No health checks run yet.</p>
+    <p class="text-muted">Click "Run Health Check Now" to analyze your codebase, or wait for the next automated check.</p>
+</div>
+{% endif %}
+
+<!-- History Link -->
+<div class="section">
+    <h2><a href="{{ url_for('health.history') }}">📈 View Health History →</a></h2>
+</div>
+{% endblock %}

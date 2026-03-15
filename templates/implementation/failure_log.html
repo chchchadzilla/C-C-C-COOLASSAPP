@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}Failure Log — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🚨 Failure Log</h1>
+    <button class="btn btn-primary" onclick="document.getElementById('add-failure-form').style.display='block'">+ Log Failure</button>
+</div>
+
+<p class="page-subtitle">Document every failure so the team learns collectively, not just individually. When running multiple parallel agents, shared failure logging prevents repeated mistakes.</p>
+
+<!-- Add Failure Form (hidden by default) -->
+<div id="add-failure-form" class="form-container" style="display:none">
+    <h3>Log New Failure</h3>
+    <form method="POST" action="{{ url_for('implementation.add_failure') }}">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category">
+                    <option value="merge_conflict">Merge Conflict</option>
+                    <option value="context_drift">Context Drift</option>
+                    <option value="contradiction">Contradictory Implementation</option>
+                    <option value="resource">Resource Exhaustion</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="severity">Severity</label>
+                <select id="severity" name="severity">
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" required placeholder="Brief description">
+        </div>
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="3" required placeholder="What happened, when, and context"></textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="agents_involved">Agents Involved</label>
+                <input type="text" id="agents_involved" name="agents_involved" placeholder="agent-1, agent-2">
+            </div>
+            <div class="form-group">
+                <label for="files_involved">Files Involved</label>
+                <input type="text" id="files_involved" name="files_involved" placeholder="src/app.ts, etc.">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn" onclick="document.getElementById('add-failure-form').style.display='none'">Cancel</button>
+            <button type="submit" class="btn btn-primary">Log Failure</button>
+        </div>
+    </form>
+</div>
+
+<!-- Filter -->
+<div class="filter-bar">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="merge_conflict">Merge Conflicts</button>
+    <button class="filter-btn" data-filter="context_drift">Context Drift</button>
+    <button class="filter-btn" data-filter="contradiction">Contradictions</button>
+    <button class="filter-btn" data-filter="resource">Resources</button>
+</div>
+
+<!-- Failures List -->
+<div class="failures-list" id="failures-list">
+    {% for failure in failures %}
+    <div class="failure-card {% if failure.resolved_at %}failure-resolved{% endif %}" data-category="{{ failure.category }}">
+        <div class="failure-header">
+            <div class="failure-identity">
+                <span class="severity-badge severity-{{ failure.severity }}">{{ failure.severity }}</span>
+                <span class="tag">{{ failure.category|replace('_', ' ') }}</span>
+                <h4>{{ failure.title }}</h4>
+            </div>
+            <div class="failure-time">
+                {{ failure.created_at.strftime('%b %d %H:%M') }}
+                {% if failure.resolved_at %}
+                <span class="stat-green">✓ Resolved</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="failure-body">
+            <p>{{ failure.description }}</p>
+            {% if failure.agents_involved %}
+            <div class="failure-meta"><strong>Agents:</strong> {{ failure.agents_involved }}</div>
+            {% endif %}
+            {% if failure.files_involved %}
+            <div class="failure-meta"><strong>Files:</strong> {{ failure.files_involved }}</div>
+            {% endif %}
+            {% if failure.resolution %}
+            <div class="failure-resolution">
+                <strong>Resolution:</strong> {{ failure.resolution }}
+            </div>
+            {% endif %}
+        </div>
+        {% if not failure.resolved_at %}
+        <div class="failure-actions">
+            <form method="POST" action="{{ url_for('implementation.resolve_failure', failure_id=failure.id) }}" class="inline-form">
+                <input type="text" name="resolution" placeholder="Resolution description…" class="inline-input" required>
+                <button type="submit" class="btn btn-sm btn-success">✓ Resolve</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% if not failures %}
+    <div class="empty-state">
+        <p>🎉 No failures logged yet!</p>
+        <p class="text-muted">When issues arise, log them here for collective team learning.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const filter = btn.dataset.filter;
+        document.querySelectorAll('.failure-card').forEach(card => {
+            card.style.display = (filter === 'all' || card.dataset.category === filter) ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

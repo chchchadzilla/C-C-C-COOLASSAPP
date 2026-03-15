@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Best Practices — C-C-C-COOLASSAPP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📚 Best Practices & Knowledge Base</h1>
+    <p class="page-subtitle">Battle-tested patterns for running Claude Code at scale — from official docs, community wisdom, and production experience</p>
+</div>
+
+<div class="kb-grid">
+    <a href="{{ url_for('bestpractices.claude_md') }}" class="kb-card">
+        <div class="kb-icon">📄</div>
+        <h3>CLAUDE.md Mastery</h3>
+        <p>Write effective context files that make every agent 10x smarter. Templates, structure, hierarchy, and common mistakes.</p>
+        <span class="kb-tag">Foundation</span>
+    </a>
+    
+    <a href="{{ url_for('bestpractices.parallel_agents') }}" class="kb-card">
+        <div class="kb-icon">🔀</div>
+        <h3>Parallel Agent Patterns</h3>
+        <p>Run 10 agents without chaos. Fan-out patterns, session isolation, worktree strategies, and the multi-agent spectrum.</p>
+        <span class="kb-tag">Core Skill</span>
+    </a>
+    
+    <a href="{{ url_for('bestpractices.failure_modes') }}" class="kb-card">
+        <div class="kb-icon">🚨</div>
+        <h3>Failure Modes & Recovery</h3>
+        <p>Merge conflicts, context drift, contradictory implementations, resource exhaustion — how to prevent and fix them all.</p>
+        <span class="kb-tag">Critical</span>
+    </a>
+    
+    <a href="{{ url_for('bestpractices.orchestration_patterns') }}" class="kb-card">
+        <div class="kb-icon">🎛️</div>
+        <h3>Orchestration Patterns</h3>
+        <p>Skills, subagents, plugins, hooks, and the mental model for structuring work across agents. Build your orchestration layer.</p>
+        <span class="kb-tag">Advanced</span>
+    </a>
+    
+    <a href="{{ url_for('bestpractices.commands') }}" class="kb-card">
+        <div class="kb-icon">⌨️</div>
+        <h3>Commands & Configuration</h3>
+        <p>CLI flags, permission modes, model selection, settings.json, .clauderc — every knob you can turn.</p>
+        <span class="kb-tag">Reference</span>
+    </a>
+</div>
+
+<div class="section">
+    <h2>⚡ Quick Tips</h2>
+    <div class="tips-grid">
+        <div class="tip-card">
+            <h4>🎯 Give verification commands</h4>
+            <p>Always tell agents HOW to verify their work: <code>"After changes, run npm test and fix failures"</code>. Agents that verify produce dramatically better results.</p>
+        </div>
+        <div class="tip-card">
+            <h4>🌿 One branch per agent</h4>
+            <p>Never let two agents work on the same branch. Use git worktrees for zero-overhead isolation: <code>git worktree add ../project-feature feature-branch</code></p>
+        </div>
+        <div class="tip-card">
+            <h4>📏 Be specific, not vague</h4>
+            <p><strong>Bad:</strong> "Fix the auth system"<br><strong>Good:</strong> "In src/auth/login.ts, add rate limiting that blocks after 5 failed attempts in 15 minutes. Add tests in tests/auth.test.ts."</p>
+        </div>
+        <div class="tip-card">
+            <h4>🔍 Use subagents for big tasks</h4>
+            <p>Ask Claude to break complex work into subtasks and use subagents. The orchestrator agent plans, subagents execute in parallel.</p>
+        </div>
+        <div class="tip-card">
+            <h4>🛡️ Start with default permissions</h4>
+            <p>Resist going to <code>--dangerously-skip-permissions</code> early. Build trust with each agent first. Use allowlists in <code>.claude/settings.json</code>.</p>
+        </div>
+        <div class="tip-card">
+            <h4>📊 Check /compact regularly</h4>
+            <p>When agents get slow or confused, use <code>/compact</code> to compress context. Long conversations drift — keep them focused.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
