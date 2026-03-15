@@ -457,6 +457,12 @@ class ProviderConfig(db.Model):
         # Legacy plaintext key — return as-is (will be encrypted on next save)
         return self.api_key
 
+    def get_key_hint(self) -> str:
+        """Return a masked key hint for UI placeholders."""
+        from services.encryption import mask_key
+        raw = self.get_api_key()
+        return mask_key(raw) if raw else ''
+
 
 class ApiKey(db.Model):
     """

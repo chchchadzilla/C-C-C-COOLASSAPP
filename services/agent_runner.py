@@ -200,7 +200,14 @@ def run_agent_task_async(agent, session, task: str, repo_path: str = None,
                 'task': task[:200],
             })
 
-            result = run_agent_task(agent, session, task, repo_path, model, timeout)
+            result = run_agent_task(
+                agent, session, task,
+                repo_path=repo_path,
+                model=model,
+                timeout=timeout,
+                socketio=socketio,
+                app=app,
+            )
 
             # Update session
             session.status = 'completed' if result['success'] else 'failed'

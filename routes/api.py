@@ -83,6 +83,15 @@ def api_agents():
     return jsonify([a.to_dict() for a in agents])
 
 
+@api_bp.route('/agents/<int:agent_id>')
+@login_required
+def api_agent(agent_id):
+    agent = Agent.query.get_or_404(agent_id)
+    if current_user.role not in ('admin', 'orchestrator') and agent.user_id != current_user.id:
+        return jsonify({'error': 'Not your agent'}), 403
+    return jsonify(agent.to_dict())
+
+
 @api_bp.route('/agents/<int:agent_id>/sessions')
 @login_required
 def api_agent_sessions(agent_id):

@@ -16,7 +16,7 @@
 
         <div class="form-group">
             <label for="api_key">API Key / Token</label>
-            <input type="password" id="api_key" name="api_key" placeholder="{{ '••••' + provider.api_key[-4:] if provider.api_key else 'Enter new key' }}">
+            <input type="password" id="api_key" name="api_key" placeholder="{{ provider.get_key_hint() if provider.api_key else 'Enter new key' }}">
             <small class="form-help">Leave blank to keep current key</small>
         </div>
 
