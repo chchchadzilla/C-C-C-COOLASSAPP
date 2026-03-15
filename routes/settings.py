@@ -61,9 +61,9 @@ def create_provider():
         provider = ProviderConfig(
             name=request.form.get('name', '').strip(),
             provider_type=provider_type,
-            api_key=request.form.get('api_key', '').strip(),
             api_base_url=request.form.get('api_base_url', '').strip(),
             org_id=request.form.get('org_id', '').strip(),
+            working_directory=request.form.get('working_directory', '').strip(),
             default_model=request.form.get('default_model', '').strip(),
             max_tokens=int(request.form.get('max_tokens', 4096)),
             temperature=float(request.form.get('temperature', 0.0)),
@@ -72,6 +72,9 @@ def create_provider():
             priority=int(request.form.get('priority', 0)),
             created_by=current_user.id,
         )
+        # Encrypt the API key before persisting
+        raw_key = request.form.get('api_key', '').strip()
+        provider.set_api_key(raw_key)
         db.session.add(provider)
         db.session.commit()
 
@@ -95,6 +98,7 @@ def edit_provider(provider_id):
         provider.name = request.form.get('name', provider.name).strip()
         provider.api_base_url = request.form.get('api_base_url', '').strip()
         provider.org_id = request.form.get('org_id', '').strip()
+        provider.working_directory = request.form.get('working_directory', '').strip()
         provider.default_model = request.form.get('default_model', '').strip()
         provider.max_tokens = int(request.form.get('max_tokens', 4096))
         provider.temperature = float(request.form.get('temperature', 0.0))
@@ -104,7 +108,7 @@ def edit_provider(provider_id):
         # Only update key if a new one was submitted (don't blank on empty)
         new_key = request.form.get('api_key', '').strip()
         if new_key:
-            provider.api_key = new_key
+            provider.set_api_key(new_key)
 
         make_default = request.form.get('is_default') == 'on'
         if make_default and not provider.is_default:

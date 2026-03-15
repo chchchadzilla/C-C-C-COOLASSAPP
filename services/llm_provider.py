@@ -65,8 +65,8 @@ def _resolve_api_key(provider_config, user=None) -> Optional[str]:
         except Exception as e:
             logger.warning(f"Failed to look up per-user key: {e}")
 
-    # Fall back to shared provider key
-    return provider_config.api_key
+    # Fall back to shared provider key (decrypt from Fernet ciphertext)
+    return provider_config.get_api_key()
 
 
 def _track_key_usage(provider_config, user, tokens_used: int = 0):
@@ -213,7 +213,7 @@ def _send_claude_code(config, messages, model, max_tokens, temperature, api_key=
             capture_output=True,
             text=True,
             timeout=300,
-            cwd=config.api_base_url or None,  # Use base_url as working dir
+            cwd=config.working_directory or None,  # Dedicated CWD field
         )
         if result.returncode != 0:
             raise RuntimeError(f"claude CLI error: {result.stderr.strip()}")
@@ -255,7 +255,7 @@ def _send_anthropic(config, messages, model, max_tokens, temperature, api_key=No
     url = f"{base}/v1/messages"
 
     # Use resolved key (per-user or shared)
-    key = api_key or config.api_key
+    key = api_key or config.get_api_key()
 
     # Convert to Anthropic format: separate system from user/assistant
     system_text = ''
@@ -309,7 +309,8 @@ def _test_anthropic(config):
             config,
             [{'role': 'user', 'content': 'Reply with exactly: OK'}],
             config.default_model or 'claude-3-5-haiku-20241022',
-            16, 0
+            16, 0,
+            api_key=config.get_api_key(),
         )
         return True, f"Connected — model: {result['model']}"
     except Exception as e:
@@ -326,7 +327,7 @@ def _send_openrouter(config, messages, model, max_tokens, temperature, api_key=N
     url = f"{base}/v1/chat/completions"
 
     # Use resolved key (per-user or shared)
-    key = api_key or config.api_key
+    key = api_key or config.get_api_key()
 
     payload = {
         'model': model,
@@ -368,7 +369,8 @@ def _test_openrouter(config):
             config,
             [{'role': 'user', 'content': 'Reply with exactly: OK'}],
             config.default_model or 'anthropic/claude-3.5-haiku',
-            16, 0
+            16, 0,
+            api_key=config.get_api_key(),
         )
         return True, f"Connected — model: {result['model']}"
     except Exception as e:
@@ -387,7 +389,7 @@ def _send_github_copilot(config, messages, model, max_tokens, temperature, api_k
     url = f"{base}/chat/completions"
 
     # Use resolved key (per-user or shared)
-    key = api_key or config.api_key
+    key = api_key or config.get_api_key()
 
     payload = {
         'model': model,
@@ -427,9 +429,10 @@ def _test_github_copilot(config):
     try:
         # Try a simple auth check against GitHub API first
         import urllib.request
+        decrypted_key = config.get_api_key()
         req = urllib.request.Request(
             'https://api.github.com/user',
-            headers={'Authorization': f'Bearer {config.api_key}', 'Accept': 'application/json'}
+            headers={'Authorization': f'Bearer {decrypted_key}', 'Accept': 'application/json'}
         )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read())

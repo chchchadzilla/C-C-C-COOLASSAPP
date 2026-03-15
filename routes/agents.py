@@ -257,11 +257,12 @@ def execute_task(agent_id):
     db.session.add(session)
     db.session.commit()
 
-    from services.agent_runner import run_agent_task, run_agent_task_async
     from flask import current_app
 
     if background:
-        run_agent_task_async(
+        # Use the centralized task queue (bounded thread pool, status tracking)
+        from services.task_queue import task_queue
+        task_info = task_queue.submit(
             agent, session, task,
             repo_path=repo_path or None,
             model=model, timeout=timeout,
@@ -270,10 +271,11 @@ def execute_task(agent_id):
         return jsonify({
             'success': True,
             'session_id': session.session_id,
-            'status': 'running',
-            'message': f'Task started in background for {agent.name}',
+            'status': task_info.status.value,
+            'message': f'Task submitted to queue for {agent.name}',
         })
     else:
+        from services.agent_runner import run_agent_task
         result = run_agent_task(
             agent, session, task,
             repo_path=repo_path or None,

@@ -103,6 +103,8 @@ class TaskQueue:
                     repo_path=repo_path,
                     model=model,
                     timeout=timeout,
+                    socketio=socketio,
+                    app=app,
                 )
 
                 # Update session

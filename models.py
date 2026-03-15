@@ -360,9 +360,10 @@ class ProviderConfig(db.Model):
     # Provider types: claude_code, anthropic, openrouter, github_copilot
 
     # Connection
-    api_key = db.Column(db.String(512), default='')  # Encrypted in production
+    api_key = db.Column(db.String(512), default='')  # Encrypted via Fernet
     api_base_url = db.Column(db.String(512), default='')  # Custom endpoint override
     org_id = db.Column(db.String(200), default='')  # Org header for some providers
+    working_directory = db.Column(db.String(512), default='')  # CWD for Claude CLI
 
     # Defaults
     default_model = db.Column(db.String(120), default='')
@@ -438,6 +439,23 @@ class ProviderConfig(db.Model):
             'has_key': bool(self.api_key),
             'provider_meta': self.PROVIDER_TYPES.get(self.provider_type, {}),
         }
+
+    # ── Encrypted key helpers ─────────────────────────────────────────────
+    def set_api_key(self, raw_key: str):
+        """Encrypt and store an API key via Fernet."""
+        from services.encryption import encrypt_value
+        self.api_key = encrypt_value(raw_key) if raw_key else ''
+
+    def get_api_key(self) -> str:
+        """Decrypt and return the stored API key."""
+        from services.encryption import decrypt_value, is_encrypted
+        if not self.api_key:
+            return ''
+        # If the value is already Fernet ciphertext, decrypt it
+        if is_encrypted(self.api_key):
+            return decrypt_value(self.api_key)
+        # Legacy plaintext key — return as-is (will be encrypted on next save)
+        return self.api_key
 
 
 class ApiKey(db.Model):

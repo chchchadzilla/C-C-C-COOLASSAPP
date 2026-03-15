@@ -21,7 +21,7 @@ This document defines the rules, coding standards, workflow guidelines, referenc
 
 ## PROJECT-SPECIFIC STANDARDS
 
-When running 10 parallel agents, CLAUDE.md becomes the single source of truth that keeps all agents aligned. Without it, agents make contradictory decisions.
+When running 10 parallel agents, `CLAUDE.md` becomes the single source of truth that keeps all agents aligned. Without it, agents make contradictory decisions.
 
 When `CLAUDE.md` files are too long and Claude ignores instructions, split into `CLAUDE.md` (universal rules) + skill files (domain-specific). Use `@imports` for structure. Keep root `CLAUDE.md` under 50 lines. If `CLAUDE.md` bloat persists, implement a pre-commit hook that rejects `CLAUDE.md` files over the line limit.
 

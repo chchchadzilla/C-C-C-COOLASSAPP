@@ -34,14 +34,3 @@ desktop.ini
 # Coverage
 htmlcov/
 .coverage
-
-# Specstory
-.specstory/
-
-# Temp/build artifacts
-*.egg
-*.whl
-*.tar.gz
-
-# Exports directory
-exports/

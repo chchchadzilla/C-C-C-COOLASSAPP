@@ -47,7 +47,8 @@ def check_claude_cli() -> tuple:
 
 def run_agent_task(agent, session, task: str, repo_path: str = None,
                    model: str = None, timeout: int = 600,
-                   permission_mode: str = None) -> dict:
+                   permission_mode: str = None,
+                   socketio=None, app=None) -> dict:
     """
     Execute an agent task synchronously via the claude CLI.
 
@@ -59,6 +60,8 @@ def run_agent_task(agent, session, task: str, repo_path: str = None,
         model: Model override (e.g. 'sonnet', 'opus')
         timeout: Max seconds before killing the process
         permission_mode: Permission mode for claude (default, permissive, etc.)
+        socketio: Optional SocketIO instance for live streaming
+        app: Optional Flask app for app context (needed when socketio is provided)
 
     Returns:
         {
@@ -99,8 +102,29 @@ def run_agent_task(agent, session, task: str, repo_path: str = None,
         )
         _running_tasks[session.session_id] = proc
 
-        stdout, stderr = proc.communicate(input=task, timeout=timeout)
+        # Send task via stdin, then close to signal EOF
+        proc.stdin.write(task)
+        proc.stdin.close()
 
+        # Stream stdout line-by-line, emitting each via SocketIO for live view
+        output_lines = []
+        for line in iter(proc.stdout.readline, ''):
+            output_lines.append(line)
+            if socketio:
+                socketio.emit('agent_output', {
+                    'session_id': session.session_id,
+                    'agent_id': agent.agent_id,
+                    'line': line.rstrip('\n'),
+                })
+
+        proc.stdout.close()
+        stderr = proc.stderr.read()
+        proc.stderr.close()
+
+        # Wait for process to finish with timeout
+        proc.wait(timeout=timeout)
+
+        stdout = ''.join(output_lines)
         duration = (datetime.now(timezone.utc) - start).total_seconds()
 
         result = {
@@ -121,12 +145,12 @@ def run_agent_task(agent, session, task: str, repo_path: str = None,
 
     except subprocess.TimeoutExpired:
         proc.kill()
-        proc.communicate()
+        proc.wait()
         duration = (datetime.now(timezone.utc) - start).total_seconds()
         logger.warning(f"[AgentRunner] Task for {agent.agent_id} timed out after {timeout}s")
         return {
             'success': False,
-            'output': '',
+            'output': ''.join(output_lines) if 'output_lines' in dir() else '',
             'error': f'Task timed out after {timeout} seconds',
             'exit_code': -1,
             'duration_seconds': round(duration, 2),

@@ -148,7 +148,60 @@
 <script>
 const agentId = {{ agent.id }};
 const socket = io();
+const agentIdStr = '{{ agent.agent_id }}';
 
+// ── Live output streaming (line-by-line from agent_runner) ───────────
+socket.on('agent_output', function(data) {
+    // Filter to this agent only
+    if (data.agent_id !== agentIdStr) return;
+
+    const output = document.getElementById('terminal-output');
+    // Remove the "waiting" placeholder on first real line
+    const waiting = document.getElementById('term-waiting');
+    if (waiting) waiting.remove();
+
+    const line = document.createElement('div');
+    line.className = 'term-line term-stdout';
+    line.textContent = data.line;
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+});
+
+// ── Task lifecycle events ────────────────────────────────────────────
+socket.on('agent_task_started', function(data) {
+    if (data.agent_id !== agentIdStr) return;
+    const output = document.getElementById('terminal-output');
+    const line = document.createElement('div');
+    line.className = 'term-line term-system';
+    line.textContent = '▶ Task started: ' + (data.task || '');
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+});
+
+socket.on('agent_task_completed', function(data) {
+    if (data.agent_id !== agentIdStr) return;
+    const output = document.getElementById('terminal-output');
+    const line = document.createElement('div');
+    line.className = 'term-line ' + (data.success ? 'term-success' : 'term-error');
+    line.textContent = (data.success ? '✓ Task completed' : '✗ Task failed') +
+                       ' (' + (data.duration_seconds || 0).toFixed(1) + 's)';
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
+    refreshView();
+});
+
+socket.on('task_status', function(data) {
+    if (data.session_id) {
+        const output = document.getElementById('terminal-output');
+        const line = document.createElement('div');
+        line.className = 'term-line term-info';
+        line.textContent = '● Status: ' + data.status;
+        output.appendChild(line);
+        output.scrollTop = output.scrollHeight;
+    }
+});
+
+// ── Legacy agent_update per-agent channel ────────────────────────────
 socket.on('agent_update_' + agentId, function(data) {
     const output = document.getElementById('terminal-output');
     const line = document.createElement('div');
