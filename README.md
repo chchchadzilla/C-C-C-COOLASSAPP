@@ -1,4 +1,4 @@
-﻿# C-C-C-COOLASSAPP
+ï»¿# C-C-C-COOLASSAPP
 
 **Carefully-Crafted-Claude-Code Original Orchestration Layer And Super Serious Appropriately Positioned Project**
 
@@ -497,3 +497,9 @@ section above.
 ---
 
 *Built for teams who think running 10 AI agents at once is a perfectly reasonable thing to do.*
+
+---
+
+## Support
+
+If this project helps you, you can support my work here: **https://buymeacoffee.com/chadpkeith**
